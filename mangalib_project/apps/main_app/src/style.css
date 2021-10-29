@@ -1,0 +1,12 @@
+header{
+	position: fixed;
+	height:  200px;
+	width: 100%;
+	top: 0;
+	left: 0;
+}
+.content{
+	position: relative;
+	width: 100%;
+	overflow: hidden;
+}
