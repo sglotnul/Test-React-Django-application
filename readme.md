@@ -1,2 +1,2 @@
-#Simple Django-React application 
+# Simple Django-React application 
 just for training
