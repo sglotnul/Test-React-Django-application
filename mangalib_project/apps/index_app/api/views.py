@@ -1,18 +1,19 @@
 from django.http import JsonResponse
 from ..models import *
 from .serializers import *
+from .paginator import Paginator
 from .filters import MangaFilter
 from django.views import View
+import time
 
 class mangaAPI(View):
 	def get(self, request, pk = None):
 		if pk is None:
 			filters = MangaFilter(request.GET)	
-			qs = Manga.objects.filter(*filters)
-			qs = filters.order(qs)
-			qs = filters.filter_by_categories(qs)
-			qs = filters.get_page(qs)
-			return JsonResponse({'result' : True, 'number of coincidences' : len(qs), 'data' : MangaSerializer(qs, many = True).data})
+			qs = filters.filter(Manga)
+			paginator = Paginator(qs)
+			qs = filters.get_page(paginator)
+			return JsonResponse({'result' : True, 'number of coincidences' : len(qs), 'number of pages' : len(paginator.paginated_queryset), 'data' : MangaSerializer(qs, many = True).data})
 		object = Manga.objects.safe_get(pk)
 		if object:
 			return JsonResponse({'result' : True, 'data' : MangaSerializer(object).data})

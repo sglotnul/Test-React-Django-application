@@ -1,17 +1,19 @@
 import './style.css'
 import React, {Fragment} from 'react';
-
-const x = 36.50;
+import Navbar from './components/navbar.js';
+import Footer from './components/footer.js';
+import Catalog from './components/catalog.js';
+import {BrowserRouter as Router, Switch, Route, Link} from 'react-router-dom';
 
 function App() {
   return (
-    <>
-      <header className="navigation-bar"/>
-      <div className="content">
-        
-      </div>
-      <footer className="navigation-bar"/>
-    </>
+    <Router>
+      <Navbar/>
+      <Switch>
+        <Route path="/manga" component={Catalog}/>
+      </Switch>
+      <Footer/>
+    </Router>
   );
 }
 

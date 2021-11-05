@@ -1,5 +1,4 @@
 from django.db.models import Q
-from .paginator import Paginator
 
 class FilterParameter():
 	def __init__(self, template = '{}'):
@@ -20,12 +19,25 @@ class Filter():
 			if value:
 				setattr(self, field, value)
 
-	def __iter__(self):
-		filter_list = ()
+	def filter(self, model, queryset = None):
+		will_repeat = False
+		qs = queryset or model.objects.all()
 		for i in self.__filters__:
-			f = getattr(self, i)
-			filter_list = (*filter_list,  *(Q(**{i : e}) for e in f))
-		return (x for x in filter_list)		
+			params = getattr(self, i)
+			if len(params) > 0:
+				will_repeat = bool(len(params) > 1)
+				param = params[0]
+				try:
+					if param.startswith('-'):
+						qs = qs.exclude(**{i: param[1:]})
+					else:
+						qs = qs.filter(**{i: param})
+				except:
+					pass
+				self.__dict__[i] = params[1:]
+		if will_repeat:
+			return self.filter(model, qs)
+		return qs
 
 class MangaFilter(Filter):
 	title = FilterParameter('{}__contains')
@@ -33,24 +45,19 @@ class MangaFilter(Filter):
 	written_at = FilterParameter()
 	created_at = FilterParameter()
 	redacted_at = FilterParameter()
+	categories = FilterParameter('{}__id')
 
-	def filter_by_categories(self, queryset):
-		qs = queryset
-		if not hasattr(self, 'categories'):
-			return qs
-		for cat in self.categories:
-			qs = qs.filter(categories__id = cat)
+	def filter(self, *args, **kwargs):
+		qs = super().filter(*args, **kwargs)
+		qs = self.order(qs)
 		return qs
 
 	def order(self, queryset):
 		qs = queryset
 		order = getattr(self, 'order_by', 'title')
-		if not(order in dir(self.__class__)) or ('__' in order):
-			order = 'title'
-		return qs.order_by(order)
+		return qs.safe_order_by(order)
 
-	def get_page(self, queryset):
-		pages = Paginator(queryset)
+	def get_page(self, paginator):
 		if not hasattr(self, 'page'):
-			return pages.get_page()
-		return pages.get_page(int(self.page))
+			return paginator.queryset
+		return paginator.get_page(int(self.page))

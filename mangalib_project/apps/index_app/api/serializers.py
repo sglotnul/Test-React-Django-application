@@ -26,5 +26,5 @@ class MangaSerializer(serializers.ModelSerializer):
 class CategorySerializer(serializers.ModelSerializer):
 	class Meta:
 		model = Category
-		fields = ['title', 'is_critical']
+		fields = ['id', 'title', 'is_critical']
 

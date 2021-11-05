@@ -1,7 +1,7 @@
 import os, uuid, shutil
 from django.db import models
 from django.conf import settings
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, FieldError
 
 def images_directory_path(instance, filename):
 	return os.path.join("previews", str(instance.slug), str(uuid.uuid4().hex + ".jpg"))
@@ -13,6 +13,13 @@ class MangaQuerySet(models.QuerySet):
 		for obj in self:
 			obj.delete()
 		super(MangaQuerySet, self).delete(*args, **kwargs)
+	def safe_order_by(self, *args, **kwargs):
+		qs = super(MangaQuerySet, self)
+		try:
+			qs = qs.order_by(*args)
+		except FieldError:
+			qs = qs.order_by('title')
+		return qs
 
 class MangaManager(models.Manager):
 	def get_queryset(self):
