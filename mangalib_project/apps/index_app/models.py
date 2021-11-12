@@ -16,9 +16,17 @@ class MangaQuerySet(models.QuerySet):
 	def safe_order_by(self, *args, **kwargs):
 		qs = super(MangaQuerySet, self)
 		try:
-			qs = qs.order_by(*args)
+			qs = qs.order_by(*args, **kwargs)
 		except FieldError:
 			qs = qs.order_by('title')
+		return qs
+	def include_or_exclude_filter(self, field, filters_list):
+		qs = super(MangaQuerySet, self)
+		for f in filters_list:
+			if f.startswith('-'):
+				qs = qs.exclude(**{field: f[1:]})
+			else:
+				qs = qs.filter(**{field: f})
 		return qs
 
 class MangaManager(models.Manager):

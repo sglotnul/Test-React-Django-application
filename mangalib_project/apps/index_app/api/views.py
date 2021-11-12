@@ -8,6 +8,7 @@ import time
 
 class mangaAPI(View):
 	def get(self, request, pk = None):
+		time.sleep(1)
 		if pk is None:
 			filters = MangaFilter(request.GET)	
 			qs = filters.filter(Manga)
@@ -21,6 +22,7 @@ class mangaAPI(View):
 
 class categoriesAPI(View):
 	def get(self, request, pk = None):
+		time.sleep(2)
 		if pk is None:
 			qs = Category.objects.all()
 			return JsonResponse({'result' : True, 'number of coincidences' : len(qs), 'data' : CategorySerializer(qs, many = True).data})

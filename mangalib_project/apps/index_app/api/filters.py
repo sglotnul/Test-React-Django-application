@@ -19,24 +19,11 @@ class Filter():
 			if value:
 				setattr(self, field, value)
 
-	def filter(self, model, queryset = None):
-		will_repeat = False
-		qs = queryset or model.objects.all()
-		for i in self.__filters__:
-			params = getattr(self, i)
-			if len(params) > 0:
-				will_repeat = bool(len(params) > 1)
-				param = params[0]
-				try:
-					if param.startswith('-'):
-						qs = qs.exclude(**{i: param[1:]})
-					else:
-						qs = qs.filter(**{i: param})
-				except:
-					pass
-				self.__dict__[i] = params[1:]
-		if will_repeat:
-			return self.filter(model, qs)
+	def filter(self, model):
+		qs = model.objects.all()
+		for field in self.__filters__:
+			params = getattr(self, field)
+			qs = qs.include_or_exclude_filter(field, params)
 		return qs
 
 class MangaFilter(Filter):

@@ -1,123 +1,169 @@
 import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
+import createBrowserHistory from 'history/createBrowserHistory'
 import axios from 'axios'; 
+import FilterModal from './modal.js';
+
+const history = createBrowserHistory();
 
 class Catalog extends react.Component{
 	constructor(props){
 		super(props);
 		this.state = {
+			queryString: '',
 			categories: {},
-			applied_categories: [],
-			updateMangaList: false,
+			appliedCategories: {},
+			order: '',
+			orderDirection: true,
 		};
 	}
 
-	onQueryStringUpdate(){
-		this.setState({updateMangaList: true});
-		this.appliedCategoriesListUpdate();
+	componentDidMount(){	
+		this.categoriesListUpdate();
+		this.setState({queryString: new URLSearchParams(window.location.search).toString()});
+	}
+
+	componentDidUpdate(prevProps, prevState){
+		if(prevState.categories !== this.state.categories){
+			this.setOrdering();
+			this.setAppliedCategoriesList();
+		};
+		if((prevState.appliedCategories !== this.state.appliedCategories) || (prevState.order !== this.state.order) || (prevState.orderDirection !== this.state.orderDirection)){
+			this.updateQueryString();
+		}
 	}
 
 	categoriesListUpdate(){
-		let component = this;
-		return new Promise(function(resolve){
-			fetch(`/api/categories/`, {
-				method: 'GET',
-			})
-			.then(response=> response.json())
-			.then(result=> {
-				if(!result.result) return;
-				component.setState({categories: result.data.reduce((obj, {id, ...data})=> obj[id] = data, {})});
-				resolve();
-			})
+		fetch(`/api/categories/`, {
+			method: 'GET',
+		})
+		.then(response=> response.json())
+		.then(result=> {
+			if(!result.result) return;
+			this.setState({categories: result.data.reduce((obj, {id, ...data})=> Object.assign({}, obj, {[id]: data}), {})});
 		})
 	}
 
-	appliedCategoriesListUpdate(){
-		const categories = new URLSearchParams(window.location.search).get('categories');
-		let appliedCategoriesList = [];
-		for(let cat of categories ? categories.split(',') : []){
-			let appliedCat = this.state.categories[+cat];
-			if(appliedCat) appliedCategoriesList.push(appliedCat);
-		}
-		this.setState({applied_categories: appliedCategoriesList});
+	setOrdering(){
+		let order = new URLSearchParams(this.state.queryString).get('order_by') || '';
+		let dir = true;
+		if(order.startsWith('-')){
+			order = order.slice(1);
+			dir = false;
+		};
+		this.setState({order: order});
+		this.setState({orderDirection: dir});
 	}
 
-	componentDidMount(){	
-		this.categoriesListUpdate()
-		.then(()=> this.onQueryStringUpdate());	
+	setAppliedCategoriesList(){
+		const categories = new URLSearchParams(this.state.queryString).get('categories');
+		let appliedCategoriesList = {};
+		for(let cat of categories ? categories.split(',') : []){
+			let appliedCat = this.state.categories[cat];
+			if(appliedCat) appliedCategoriesList[cat] = appliedCat;
+		}
+		this.setState({appliedCategories: appliedCategoriesList});
+	}
+
+	updateQueryString(){
+		let {appliedCategories: categories, order, orderDirection} = this.state;
+		let queryObj = {
+			categories: Object.keys(categories).join(','),
+			order_by: (orderDirection ? '' : '-') + order,
+		};
+		let searchParams = new URLSearchParams('');
+		for(let [key, value] of  Object.entries(queryObj)){
+			if(value) searchParams.set(key, value);
+		}
+		let queryString = searchParams.toString();
+		this.setState({queryString: queryString});
+		history.replace(window.location.pathname + (queryString ? '?' + queryString : ''));
 	}
 
 	render(){
+		let {categories, appliedCategories, order, orderDirection} = this.state;
 		return(
 			<div className="content">
 				<div className="default-page">
 					<div className="catalog-menu"></div>
-					<CategoriesBar Categories={this.state.applied_categories}/>
-					<InfiniteScroll UpdateMangaList={this.state.updateMangaList} onMangaListUpdated={()=>this.setState({updateMangaList: false})}/>
+					<CategoriesBar Categories={appliedCategories}/>
+					<InfiniteScroll QueryString={this.state.queryString}/>
+					<FilterModal 
+						OnUpdate={this.setState.bind(this)}
+						CategoryList={categories} 
+						AppliedCategoryList={appliedCategories} 
+						Order={order} 
+						OrderDir={orderDirection}
+					/>
 				</div>
 	        </div>
 		)
 	}
 }
 
-function InfiniteScroll(props){
-	const [update, setUpdate] = useState(true);
-	const [loading, setLoading] = useState(false);
-	const [manga, setManga] = useState([]);
-	const [page, setPage] = useState(1);
-	const [numberOfPages, setNumberOfPages] = useState(1);
-	const observer = useRef();
-	const lastElemRef = useCallback(node=> {
-		if(loading) return;
-		if(observer.current) observer.current.disconnect();
-		observer.current = new IntersectionObserver(entries=> {
-			if(entries[0].isIntersecting){
-				if(page >= numberOfPages) {
-					return;
-				};
-				setPage(page + 1);
-			}
-		})
-		if(node) observer.current.observe(node);
-	}, [loading])
-
-	useEffect(()=>{
-		props.onMangaListUpdated();
-		if(props.UpdateMangaList){
-			setManga([]);
-			setPage(1);
+class InfiniteScroll extends react.Component{
+	constructor(props){
+		super(props);
+		this.state = {
+			manga: [],
+			page: 1,
+			numberOfPages: 1,
+			loading: false,
 		};
-	}, [props.UpdateMangaList])
+		this.lastElemRef = node=> {
+			let {page, numberOfPages} = this.state;
+			if(this.observer) this.observer.disconnect();
+			this.observer = new IntersectionObserver(entries=> {
+				if(entries[0].isIntersecting){
+					if(page < numberOfPages) this.setState({page: page + 1});
+				}
+			})
+			if(node) this.observer.observe(node);
+		}
+	}
 
-	useEffect(()=>{
-		setLoading(true);
+	componentDidMount(){
+		this.updateMangaList();
+	}
 
-		const params = Object.fromEntries(new URLSearchParams(window.location.search));
-		let cancel;
+	componentDidUpdate(prevProps, prevState){
+		if(prevProps.QueryString !== this.props.QueryString){
+			if(this.cancelFunc) this.cancelFunc();
+			this.setState({page: 1});
+			this.setState({manga: []});
+		}
+		if((prevProps.QueryString !== this.props.QueryString) || (prevState.page !== this.state.page)) this.updateMangaList();
+	}
+
+	updateMangaList(){
+		const params = Object.fromEntries(new URLSearchParams(this.props.QueryString));
+		this.setState({loading: true});
 		axios({
 		    method: 'GET',
 		    url: '/api/manga/',
-		    params: Object.assign({}, params, {page: page}),
-		    cancelToken: new axios.CancelToken(c => cancel = c)
+		    params: Object.assign({}, params, {page: this.state.page}),
+		    cancelToken: new axios.CancelToken(c=> this.cancelFunc = c)
 	    })
 	    .then(result=> {
-			setNumberOfPages(result.data['number of pages']);
-			setManga(m=> [...m, ...result.data.data]);
-			setLoading(false);
+			this.setState({numberOfPages: result.data['number of pages']});
+			this.setState({manga: [...this.state.manga, ...result.data.data]});
+			this.setState({loading: false});
+			this.setState({})
 		})
 		.catch(e=> {
 			if(axios.isCancel(e)) return;
 		})
-		return cancel;
-	}, [props.UpdateMangaList, page])
+	}
 
-	return(
-		<>
-			<div className="container">
-				{manga.map((m, index)=> <MangaCard key={index} Data={m} Ref={index + 1 === manga.length ? lastElemRef : null}/>)}
-			</div>
-			<p>{loading && 'LOADING...'}</p>
-		</>
-	)
+	render(){
+		return(
+			<>
+				<div className="container">
+					{this.state.manga.map((m, index)=> <MangaCard key={index} Data={m} Ref={index + 1 === this.state.manga.length ? this.lastElemRef : null}/>)}
+				</div>
+				<p>{this.state.loading && 'LOADING...'}</p>
+			</>
+		)
+	}
 }
 
 class MangaCard extends react.Component{
@@ -143,7 +189,7 @@ class CategoriesBar extends react.Component{
 	render(){
 		return(
 			<ul className="categories-list">
-				{this.props.Categories.map((cat)=> <li className="category-item" key={cat.id}>{cat.title}</li>)}
+				{Object.entries(this.props.Categories).map(([id, data])=> <li className="category-item" key={id}>{data.title}</li>)}
 			</ul>
 		)
 	}

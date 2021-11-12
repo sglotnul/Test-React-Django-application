@@ -3,4 +3,5 @@ from .views import *
 
 urlpatterns = [
 	path('manga', index),
+	path('', index)
 ]
