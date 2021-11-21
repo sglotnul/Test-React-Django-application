@@ -19,7 +19,7 @@ class Navbar extends react.Component{
 				HEADER
 				<Router>
 					<Switch>
-						<Route path="/manga" component={()=> <div className="modal-open-arrow" onClick={()=> window.dispatchEvent(new Event('open-filter-modal'))}>=</div>}/>
+						<Route path="/mangalist" exect component={()=> <div className="modal-open-arrow" onClick={()=> window.dispatchEvent(new Event('open-filter-modal'))}></div>}/>
 					</Switch>
 				</Router>
 			</header>

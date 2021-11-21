@@ -1,4 +1,5 @@
 import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
+import {Link} from 'react-router-dom';
 import createBrowserHistory from 'history/createBrowserHistory'
 import axios from 'axios'; 
 import FilterModal from './modal.js';
@@ -9,42 +10,41 @@ class Catalog extends react.Component{
 	constructor(props){
 		super(props);
 		this.state = {
-			queryString: '',
 			categories: {},
-			appliedCategories: {},
+			appliedCategories: [],
 			order: '',
 			orderDirection: true,
 		};
 	}
 
 	componentDidMount(){	
+		let qs = new URLSearchParams(window.location.search)
 		this.categoriesListUpdate();
-		this.setState({queryString: new URLSearchParams(window.location.search).toString()});
+		this.setAppliedCategoriesList(qs);
+		this.setOrdering(qs);
 	}
 
 	componentDidUpdate(prevProps, prevState){
-		if(prevState.categories !== this.state.categories){
-			this.setOrdering();
-			this.setAppliedCategoriesList();
-		};
-		if((prevState.appliedCategories !== this.state.appliedCategories) || (prevState.order !== this.state.order) || (prevState.orderDirection !== this.state.orderDirection)){
+		const {categories, appliedCategories, order, orderDirection} = this.state;
+		if((prevState.appliedCategories !== appliedCategories) || (prevState.order !== order) || (prevState.orderDirection !== orderDirection)){
 			this.updateQueryString();
 		}
 	}
 
 	categoriesListUpdate(){
-		fetch(`/api/categories/`, {
-			method: 'GET',
-		})
-		.then(response=> response.json())
-		.then(result=> {
-			if(!result.result) return;
-			this.setState({categories: result.data.reduce((obj, {id, ...data})=> Object.assign({}, obj, {[id]: data}), {})});
+		axios({
+		    method: 'GET',
+		    url: '/api/categories/',
+	    })
+	    .then(res=> {
+	    	let {result, data} = res.data;
+	    	if(!result) return;
+			this.setState({categories: data.reduce((obj, {id, ...d})=> Object.assign({}, obj, {[id]: d}), {})});
 		})
 	}
 
-	setOrdering(){
-		let order = new URLSearchParams(this.state.queryString).get('order_by') || '';
+	setOrdering(queryString){
+		let order = queryString.get('order_by') || 'title';
 		let dir = true;
 		if(order.startsWith('-')){
 			order = order.slice(1);
@@ -54,29 +54,24 @@ class Catalog extends react.Component{
 		this.setState({orderDirection: dir});
 	}
 
-	setAppliedCategoriesList(){
-		const categories = new URLSearchParams(this.state.queryString).get('categories');
-		let appliedCategoriesList = {};
-		for(let cat of categories ? categories.split(',') : []){
-			let appliedCat = this.state.categories[cat];
-			if(appliedCat) appliedCategoriesList[cat] = appliedCat;
-		}
-		this.setState({appliedCategories: appliedCategoriesList});
+	setAppliedCategoriesList(queryString){
+		const categories = queryString.get('categories');
+		const appliedCategoriesList = (categories ? categories.split(',') : []).reduce((list, cat)=> [...list, cat], []);
+		this.setState({appliedCategories: [...new Set(appliedCategoriesList)]});
 	}
 
 	updateQueryString(){
 		let {appliedCategories: categories, order, orderDirection} = this.state;
 		let queryObj = {
-			categories: Object.keys(categories).join(','),
-			order_by: (orderDirection ? '' : '-') + order,
+			categories: categories.join(','),
+			order_by: '-'.repeat(+!orderDirection) + order,
 		};
 		let searchParams = new URLSearchParams('');
 		for(let [key, value] of  Object.entries(queryObj)){
 			if(value) searchParams.set(key, value);
 		}
-		let queryString = searchParams.toString();
-		this.setState({queryString: queryString});
-		history.replace(window.location.pathname + (queryString ? '?' + queryString : ''));
+		let queryString = searchParams.toString()
+		history.replace(window.location.pathname + '?'.repeat(+!!queryString) + queryString);
 	}
 
 	render(){
@@ -85,10 +80,15 @@ class Catalog extends react.Component{
 			<div className="content">
 				<div className="default-page">
 					<div className="catalog-menu"></div>
-					<CategoriesBar Categories={appliedCategories}/>
-					<InfiniteScroll QueryString={this.state.queryString}/>
+					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} OnUpdate={this.setState.bind(this)}/>
+					<InfiniteScroll 
+						AppliedCategoryList={appliedCategories} 
+						Order={order} 
+						OrderDir={orderDirection}
+					/>
 					<FilterModal 
 						OnUpdate={this.setState.bind(this)}
+						Loading={this.state.loading}
 						CategoryList={categories} 
 						AppliedCategoryList={appliedCategories} 
 						Order={order} 
@@ -107,50 +107,50 @@ class InfiniteScroll extends react.Component{
 			manga: [],
 			page: 1,
 			numberOfPages: 1,
-			loading: false,
+			loading: true,
 		};
 		this.lastElemRef = node=> {
 			let {page, numberOfPages} = this.state;
 			if(this.observer) this.observer.disconnect();
 			this.observer = new IntersectionObserver(entries=> {
 				if(entries[0].isIntersecting){
-					if(page < numberOfPages) this.setState({page: page + 1});
+					if(page.value < numberOfPages) this.setState({page: Symbol(page.value + 1)});
 				}
 			})
 			if(node) this.observer.observe(node);
 		}
 	}
 
-	componentDidMount(){
-		this.updateMangaList();
-	}
-
 	componentDidUpdate(prevProps, prevState){
-		if(prevProps.QueryString !== this.props.QueryString){
-			if(this.cancelFunc) this.cancelFunc();
-			this.setState({page: 1});
+		const update = (prevProps.AppliedCategoryList !== this.props.AppliedCategoryList) || (prevProps.Order !== this.props.Order) || (prevProps.OrderDir !== this.props.OrderDir);
+		if(update){
 			this.setState({manga: []});
+			this.setState({page: Symbol(1)});
 		}
-		if((prevProps.QueryString !== this.props.QueryString) || (prevState.page !== this.state.page)) this.updateMangaList();
+		if(prevState.page !== this.state.page){
+			this.updateMangaList();
+		};
 	}
 
 	updateMangaList(){
-		const params = Object.fromEntries(new URLSearchParams(this.props.QueryString));
+		if(this.cancel) this.cancel();
+
+		let willCancel = false;
+		this.cancel = ()=> willCancel = true;
+
+		const params = Object.fromEntries(new URLSearchParams(history.location.search));
 		this.setState({loading: true});
 		axios({
 		    method: 'GET',
 		    url: '/api/manga/',
-		    params: Object.assign({}, params, {page: this.state.page}),
-		    cancelToken: new axios.CancelToken(c=> this.cancelFunc = c)
+		    params: Object.assign({}, params, {page: this.state.page.value}),
 	    })
-	    .then(result=> {
-			this.setState({numberOfPages: result.data['number of pages']});
-			this.setState({manga: [...this.state.manga, ...result.data.data]});
+	    .then(res=> {
+	    	let {result, data, 'number of pages': number_of_pages} = res.data;
+	    	if(willCancel || !result) return;
+			this.setState({numberOfPages: number_of_pages});
+			this.setState({manga: [...this.state.manga, ...data]});
 			this.setState({loading: false});
-			this.setState({})
-		})
-		.catch(e=> {
-			if(axios.isCancel(e)) return;
 		})
 	}
 
@@ -160,7 +160,7 @@ class InfiniteScroll extends react.Component{
 				<div className="container">
 					{this.state.manga.map((m, index)=> <MangaCard key={index} Data={m} Ref={index + 1 === this.state.manga.length ? this.lastElemRef : null}/>)}
 				</div>
-				<p>{this.state.loading && 'LOADING...'}</p>
+				{this.state.loading && <div className="loading-spinner"/>}
 			</>
 		)
 	}
@@ -174,9 +174,9 @@ class MangaCard extends react.Component{
 	render(){
 		const data = this.props.Data;
 		return(
-			<div className="card" ref={this.props.Ref}>
+			<Link to={{pathname: `/manga/${data.id}`, state: { fromDashboard: true }}} className="card" ref={this.props.Ref}>
 				{data.title}
-			</div>
+			</Link>
 		)
 	}
 }
@@ -186,10 +186,25 @@ class CategoriesBar extends react.Component{
 		super(props);
 	}
 
+	onCategoryDelete(id){
+		let newCatList = this.props.AppliedCategories.reduce((list, cat)=> {
+			if(cat == id){
+				return list;
+			}
+			return [...list, cat];
+		}, [])
+		console.log(newCatList);
+		this.props.OnUpdate({appliedCategories: newCatList});
+	}
+
 	render(){
 		return(
 			<ul className="categories-list">
-				{Object.entries(this.props.Categories).map(([id, data])=> <li className="category-item" key={id}>{data.title}</li>)}
+				{this.props.AppliedCategories.map(id=> {
+					let category = this.props.Categories[id];
+					if(category) return (<li className="category-item" key={id} onClick={()=> this.onCategoryDelete(id)}>{category.title}<div className="closing-area"></div></li>);
+					return null;
+				})}
 			</ul>
 		)
 	}

@@ -1,5 +1,5 @@
 class Paginator():
-	OBJECTS_ON_PAGE = 4
+	OBJECTS_ON_PAGE = 1
 	paginated_queryset = []
 
 	def __init__(self, queryset):

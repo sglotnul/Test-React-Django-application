@@ -132,3 +132,6 @@ STATICFILES_DIRS = [
 ]
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+CHAPTERS_ROOT = os.path.join(MEDIA_ROOT, 'chapters')
+PREVIEWS_ROOT = os.path.join(MEDIA_ROOT, 'previews')

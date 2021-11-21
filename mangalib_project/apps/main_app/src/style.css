@@ -21,12 +21,39 @@ header{
 header#fixed{
 	height: 70px!important;
 	background-color: #000;
-	color: #fff;
+}
+header#fixed>.modal{
+	height: 70px!important;
+	background-color: #000;
 }
 footer{
 	width: 100%;
 	height: 400px;
 	background-color: #000;
+}
+.loading-spinner{
+	display: inline-block;
+	width: 40px;
+	height: 40px;
+}
+.loading-spinner::after{
+	content: " ";
+	display: block;
+	width: 32px;
+	height: 32px;
+	margin: 4px;
+	border-radius: 50%;
+	border: 3px solid #000;
+	border-color: #000 transparent #000 transparent;
+	animation: loading-spinner 1.2s linear infinite;
+}
+@keyframes loading-spinner{
+	0% {
+		transform: rotate(0deg);
+	}
+	100% {
+		transform: rotate(360deg);
+	}
 }
 .content{
 	display: flex;
@@ -37,6 +64,9 @@ footer{
 	min-height: 120vh;
 }
 .default-page{
+	display: flex;
+	align-items: center;
+	flex-direction: column;
 	margin-top: 100px;
 	width: 100%;
 	max-width: 940px;
@@ -48,12 +78,18 @@ footer{
 	justify-content: center;
 	width: 100%;
 }
+.default-image, .page-image{
+	object-fit: cover;
+	width: 100%;
+	height: 100%;
+}
 .card{
 	width: 200px;
 	height: 280px;
 	border: 1px solid #B1B1B1;
 	border-radius: 5%;
 	margin: 30px 12px;
+	overflow: hidden;
 }
 .catalog-menu, .categories-list{
 	display: flex;
@@ -67,15 +103,16 @@ footer{
 	flex-wrap: wrap;
 }
 .category-item{
+	display: flex;
+	align-items: center;
 	list-style: none;
 	padding: 5px 10px;
-	border: 1px solid #fff;
-	border-radius: 10%;
-	background-color: #B1B1B1;
-	color: #fff;
-}
-.category-item#exclude{
-	background-color: #920000!important;
+	border-radius: 8px;
+	cursor: default;
+	user-select: none;
+	border: 1px solid #000;
+	background-color: #fff;
+	color: #000;
 }
 .category-item:not(:last-child){
 	margin-right: 5px;
@@ -83,9 +120,51 @@ footer{
 .category-item:not(:first-child){
 	margin-left: 5px;
 }
+.closing-area{
+	position: relative;
+	align-items: center;
+	cursor: pointer;
+	border-radius: 50%;
+	color: #000;
+	width: 14px;
+	height: 14px;
+	margin-left: 8px;
+}
+.closing-area::before, .closing-area::after{
+	content: " ";
+	position: absolute;
+	left: 50%;
+	width: 1px;
+	height: 100%;
+	background-color: #000;
+}
+.closing-area::before{
+	transform: rotate(45deg);
+}
+.closing-area::after{
+	transform: rotate(-45deg);
+}
 .modal-open-arrow{
+	display: flex;
+	flex-direction: column;
 	position: absolute;
 	right: 20px;
+	width: 30px;
+	height: 16px;
+	cursor: pointer;
+}
+.modal-open-arrow::before{
+	content: " ";
+	height: 5px;
+	width: 100%;
+	border-top: 2px solid #000;
+	border-bottom: 2px solid #000;
+}
+.modal-open-arrow::after{
+	content: " ";
+	height: 5px;
+	width: 100%;
+	border-bottom: 2px solid #000;
 }
 .modal{
 	top: 0;
@@ -113,4 +192,81 @@ footer{
 .modal-body#active{
 	right: 0;
 }
-
+.filter-group{
+    padding: 20px 10px;
+}
+.filter-group:not(:last-child){
+    border-bottom: 1px solid #D3D3D3;
+}
+.filter-group-title{
+	display: flex;
+	border-bottom: 2px solid #000;
+	width: 100%;
+	justify-content: center;
+	margin-bottom: 12px;
+}
+.direction-filter-menu{
+	display: flex;
+	justify-content: center;
+}
+.direction-filter-group{
+	display: flex;
+	width: 100%;
+}
+.direction-filter{
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 180px;
+	max-width: 50%;
+	border: 1px solid #D3D3D3;
+	transition: backgound-color .3s, color .3s, border .3s;
+}
+.direction-filter:first-child{
+	border-radius: 10px 0 0 10px;
+}
+.direction-filter:last-child{
+	border-radius: 0 20px 20px 0;
+}
+.direction-filter:not(:last-child){
+	margin-right: 4px;
+}
+.direction-filter:hover{
+	background-color: #D3D3D3;
+}
+.direction-filter#active{
+	border: 1px solid #000;
+	color: #fff;
+	background-color: #000;
+}
+.data-section{
+	display: flex;
+	justify-content: space-between;
+	width: 100%;
+}
+.page-image{
+	object-fit: scale-down;
+	width: 100%;
+	height: 100%;
+}
+.page-change-arrow{
+	z-index: 20;
+	position: fixed;
+	top: 0;
+	width: calc(50% - 470px);
+	height: 100%;
+}
+@media only screen and (max-width: 940px){
+	.page-change-arrow{
+		min-width: 50%;
+	}
+}
+.page-change-arrow:first-child{
+	left: 0;
+}
+.page-change-arrow:last-child{
+	right: 0;
+}
+.page-image{
+	object-fit: scale-down!important;
+}
