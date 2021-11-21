@@ -10,32 +10,39 @@ export default class Manga extends react.Component{
 		super(props);
 		this.state = {
 			data: {},
+			loading: true,
+			error: false,
 		}
 	}
 
 	componentDidMount(){
+		this.setState({loading: true});
 		axios({
 		    method: 'GET',
 		    url: `/api/manga/${this.props.match.params.id}`,
 	    })
 	    .then(({data})=> {
-	    	if(!data.result) return;
+	    	if(!data.result) throw new Error('not found');
 	    	this.setState({data: data.data})
 		})
+		.catch(()=> this.setState({error: true}))
+		.finally(()=> this.setState({loading: false}));
 	}
 
 	render(){
-		let {data} = this.state;
+		let {data, loading, error} = this.state;
 		return(
 			<div className="content">
 				<div className="default-page">
-					{this.state.data ? 
+					{this.state.data.slug ? 
 						<Switch>
 							<Route path={`/manga/${this.props.match.params.id}/read`} exect component={()=> <MangaReader Data={data}/>}/>
 							<Route path={`/manga/${this.props.match.params.id}`} component={()=> <MangaMainPage Data={data}/>}/>
 						</Switch>
 						: null
 					}
+					{loading && <div className="loading-spinner"/>}
+					{error && <p>not found</p>}
 				</div>
 			</div>
 		)
@@ -66,11 +73,6 @@ class MangaReader extends react.Component{
 	}
 
 	getChapterData(){
-		if(this.cancel) this.cancel();
-
-		let willCancel = false;
-		this.cancel = ()=> willCancel = true;
-
 		this.setState({loading: true});
 		axios({
 		    method: 'GET',
@@ -78,7 +80,7 @@ class MangaReader extends react.Component{
 	    })
 	    .then(res=> {
 	    	let {result, data} = res.data;
-	    	if(willCancel || !result || !data.number_of_pages) throw new Error('not found')
+	    	if(!data.number_of_pages) throw new Error('not found')
 	    	this.setState({chapter: data});
 	    	if(this.state.page > data.number_of_pages) this.setState({page: 1});
 	    	localStorage.setItem(this.props.Data.slug, data.number);
@@ -89,9 +91,8 @@ class MangaReader extends react.Component{
 
 	componentDidMount(){
 		let data = this.props.Data;
-		if(!data.slug) return;
 		let qs = new URLSearchParams(window.location.search);
-		let chapter = qs.get('chapter') || JSON.parse(localStorage.getItem(data.slug));
+		let chapter = qs.get('chapter') || JSON.parse(localStorage.getItem(data.slug)) || 1;
 		let page = Math.max(qs.get('page') || 1, 1);
 		this.setState({chapterNumber: chapter});
 		this.setState({page: page});
