@@ -3,6 +3,7 @@ import {Link} from 'react-router-dom';
 import createBrowserHistory from 'history/createBrowserHistory'
 import axios from 'axios'; 
 import FilterModal from './modal.js';
+import Navbar from './navbar'
 
 const history = createBrowserHistory();
 
@@ -14,11 +15,12 @@ class Catalog extends react.Component{
 			appliedCategories: [],
 			order: '',
 			orderDirection: true,
+			modalStatus: false,
 		};
 	}
 
 	componentDidMount(){	
-		let qs = new URLSearchParams(window.location.search)
+		let qs = new URLSearchParams(window.location.search);
 		this.categoriesListUpdate();
 		this.setAppliedCategoriesList(qs);
 		this.setOrdering(qs);
@@ -56,8 +58,7 @@ class Catalog extends react.Component{
 
 	setAppliedCategoriesList(queryString){
 		const categories = queryString.get('categories');
-		const appliedCategoriesList = (categories ? categories.split(',') : []).reduce((list, cat)=> [...list, cat], []);
-		this.setState({appliedCategories: [...new Set(appliedCategoriesList)]});
+		this.setState({appliedCategories: [...new Set(categories ? categories.split(',') : [])]});
 	}
 
 	updateQueryString(){
@@ -77,25 +78,31 @@ class Catalog extends react.Component{
 	render(){
 		let {categories, appliedCategories, order, orderDirection} = this.state;
 		return(
-			<div className="content">
-				<div className="default-page">
-					<div className="catalog-menu"></div>
-					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} OnUpdate={this.setState.bind(this)}/>
-					<InfiniteScroll 
-						AppliedCategoryList={appliedCategories} 
-						Order={order} 
-						OrderDir={orderDirection}
-					/>
-					<FilterModal 
-						OnUpdate={this.setState.bind(this)}
-						Loading={this.state.loading}
-						CategoryList={categories} 
-						AppliedCategoryList={appliedCategories} 
-						Order={order} 
-						OrderDir={orderDirection}
-					/>
-				</div>
-	        </div>
+			<>
+				<Navbar Fixed={false}>
+					<div className="modal-open-arrow" onClick={()=> this.setState({modalStatus: true})}/>
+				</Navbar>
+				<div className="content">
+					<div className="default-page">
+						<div className="catalog-menu"></div>
+						<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} OnUpdate={this.setState.bind(this)}/>
+						<InfiniteScroll 
+							AppliedCategoryList={appliedCategories} 
+							Order={order} 
+							OrderDir={orderDirection}
+						/>
+						<FilterModal 
+							Status={this.state.modalStatus}
+							OnUpdate={this.setState.bind(this)}
+							Loading={this.state.loading}
+							CategoryList={categories} 
+							AppliedCategoryList={appliedCategories} 
+							Order={order} 
+							OrderDir={orderDirection}
+						/>
+					</div>
+		        </div>
+	        </>
 		)
 	}
 }
@@ -108,6 +115,7 @@ class InfiniteScroll extends react.Component{
 			page: 1,
 			numberOfPages: 1,
 			loading: true,
+			reset: false, //reset - это костыль. Я хз, как помимо использования Symbol объекта в зачении page, заставить это обновляться так, как мне нужно.
 		};
 		this.lastElemRef = node=> {
 			let {page, numberOfPages} = this.state;
@@ -126,8 +134,10 @@ class InfiniteScroll extends react.Component{
 		if(update){
 			this.setState({manga: []});
 			this.setState({page: Symbol(1)});
+			this.setState({reset: true});
 		}
-		if(prevState.page !== this.state.page){
+		if((prevState.page !== this.state.page) || (prevState.reset !== this.state.reset && this.state.reset)){
+			this.setState({reset: false})
 			this.updateMangaList();
 		};
 	}
@@ -193,7 +203,6 @@ class CategoriesBar extends react.Component{
 			}
 			return [...list, cat];
 		}, [])
-		console.log(newCatList);
 		this.props.OnUpdate({appliedCategories: newCatList});
 	}
 
@@ -202,7 +211,7 @@ class CategoriesBar extends react.Component{
 			<ul className="categories-list">
 				{this.props.AppliedCategories.map(id=> {
 					let category = this.props.Categories[id];
-					if(category) return (<li className="category-item" key={id} onClick={()=> this.onCategoryDelete(id)}>{category.title}<div className="closing-area"></div></li>);
+					if(category) return <li className="category-item" key={id} onClick={()=> this.onCategoryDelete(id)}>{category.title}<div className="closing-area"></div></li>;
 					return null;
 				})}
 			</ul>

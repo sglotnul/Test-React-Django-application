@@ -5,19 +5,14 @@ class Modal extends react.Component{
 	constructor(props){
 		super(props);
 		this.state = {
-			active: false,
 			animationStatus: false,
 		}
 	}
 
-	componentDidMount(){
-		return;
-	}
-
 	componentDidUpdate(prevProps, prevState){
-		if(prevState.active != this.state.active){
+		if(prevProps.Status != this.props.Status){
 			document.body.id = document.body.id ? '' : 'blocked';
-			setTimeout(this.setState.bind(this, {animationStatus: this.state.active})); //setTimeout - долбаный костыль, хз почему, но без него не робит
+			setTimeout(this.setState.bind(this, {animationStatus: this.props.Status})); //setTimeout - долбаный костыль, хз почему, но без него не робит
 		};
 	}
 
@@ -26,13 +21,13 @@ class Modal extends react.Component{
 	}
 
 	render(){
-		if(this.state.active && document.getElementById('modals__app')){
+		if(this.props.Status && document.getElementById('modals__app')){
 			return reactDOM.createPortal(
 				<div 
 					className="modal" 
 					id={this.state.animationStatus && 'active'} 
 					onClick={()=> this.setState({animationStatus: false})} 
-					onTransitionEnd={()=> this.state.animationStatus || this.setState({active: false})}
+					onTransitionEnd={()=> this.state.animationStatus || this.props.OnUpdate({modalStatus: false})}
 				>
 					{this.getInner()}
 				</div>,
@@ -50,7 +45,6 @@ class FilterModal extends Modal{
 
 	componentDidMount(){
 		window.addEventListener('open-filter-modal', ()=> this.setState({active: true}));
-		super.componentDidMount.call(this);
 	}
 
 	getInner(){

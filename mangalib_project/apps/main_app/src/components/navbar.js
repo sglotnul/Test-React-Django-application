@@ -1,5 +1,8 @@
 import react, {Fragment} from 'react';
 import {BrowserRouter as Router, Switch, Route} from 'react-router-dom';
+import createBrowserHistory from 'history/createBrowserHistory'
+
+const history = createBrowserHistory();
 
 class Navbar extends react.Component{
 	constructor(props){
@@ -10,18 +13,17 @@ class Navbar extends react.Component{
 	}
 
 	componentDidMount(){
-		window.addEventListener('scroll', e=> this.setState({fixed: document.documentElement.getBoundingClientRect().top < 0})) 
+		window.onscroll = ()=> {
+			this.setState({fixed: window.pageYOffset !== 0})
+		}
 	}
 
 	render(){
+		console.log(this.props.Fixed)
 		return(
-			<header id={this.state.fixed && 'fixed'}>
+			<header id={(this.state.fixed || this.props.Fixed) && 'fixed'}>
 				HEADER
-				<Router>
-					<Switch>
-						<Route path="/mangalist" exect component={()=> <div className="modal-open-arrow" onClick={()=> window.dispatchEvent(new Event('open-filter-modal'))}></div>}/>
-					</Switch>
-				</Router>
+				{this.props.children}
 			</header>
 		)
 	}

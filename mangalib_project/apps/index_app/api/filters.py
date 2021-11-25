@@ -4,16 +4,26 @@ class FilterParameter():
 	def __init__(self, template = '{}'):
 		self.template = template
 	def __set__(self, instance, value):
-		instance.__dict__[self.name] = value.split(',')
-		instance.filters = [*instance.filters, self.name]
+		setattr(instance.cleaned_data, self.name, value.split(','))
 	def __get__(self, instance, owner):
-		return instance.__dict__.get(self.name, None)
+		getattr(instance.cleaned_data, self.name)
 	def __set_name__(self, owner, name):
 		self.name = self.template.format(name)
 
+class CleanedData():
+	def __init__(self):
+		self.filters = []
+	def __setattr__(self, name, value):
+		if hasattr(self, 'filters'):
+			self.filters.append(str(name))
+		self.__dict__[str(name)] = value
+	def __iter__(self):
+		for f in self.filters:
+			yield [f, getattr(self, f)]
+
 class Filter():
-	filters = []
 	def __init__(self, fields_list):
+		self.cleaned_data = CleanedData()
 		for field in fields_list:
 			value = fields_list.get(field, None)
 			if value:
@@ -21,9 +31,8 @@ class Filter():
 
 	def filter(self, model):
 		qs = model.objects.all()
-		for field in self.filters:
-			params = getattr(self, field)
-			qs = qs.include_or_exclude_filter(field, params)
+		for param, value in self.cleaned_data:
+			qs = qs.include_or_exclude_filter(param, value)
 		return qs
 
 class MangaFilter(Filter):

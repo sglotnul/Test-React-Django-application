@@ -25,7 +25,6 @@ class App extends react.Component{
 	render(){
 		return (
 			<Router history={history}>
-				<Navbar/>
 				<Switch>
 					<Route path="/manga/:id" component={Manga}/>
 					<Route path="/mangalist" exect component={Catalog}/>

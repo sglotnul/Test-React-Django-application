@@ -2,6 +2,7 @@ import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
 import {Route, Switch, Link} from 'react-router-dom';
 import createBrowserHistory from 'history/createBrowserHistory'
 import axios from 'axios'; 
+import Navbar from './navbar';
 
 const history = createBrowserHistory();
 
@@ -12,6 +13,7 @@ export default class Manga extends react.Component{
 			data: {},
 			loading: true,
 			error: false,
+			fixNavbar: false,
 		}
 	}
 
@@ -32,30 +34,35 @@ export default class Manga extends react.Component{
 	render(){
 		let {data, loading, error} = this.state;
 		return(
-			<div className="content">
-				<div className="default-page">
-					{this.state.data.slug ? 
-						<Switch>
-							<Route path={`/manga/${this.props.match.params.id}/read`} exect component={()=> <MangaReader Data={data}/>}/>
-							<Route path={`/manga/${this.props.match.params.id}`} component={()=> <MangaMainPage Data={data}/>}/>
-						</Switch>
-						: null
-					}
-					{loading && <div className="loading-spinner"/>}
-					{error && <p>not found</p>}
+			<>
+				<Navbar Fixed={this.state.fixNavbar}>
+				</Navbar>
+				<div className="content">
+					<div className="default-page">
+						{!error && (history.location.pathname.indexOf('read') !== -1 ? <MangaReader Data={data} OnMount={this.setState.bind(this, {fixNavbar: true})}/> : <MangaMainPage Loading={loading} Data={data} OnMount={this.setState.bind(this, {fixNavbar: false})}/>)}
+						{error && <p>not found</p>}
+					</div>
 				</div>
-			</div>
+			</>
 		)
 	}
 }
 
 class MangaMainPage extends react.Component{
+
+	componentDidMount(){
+		this.props.OnMount();
+	}
+
 	render(){
 		return(
-			<div className="data-section">
-				<img src={this.props.Data.preview}/>
-				<span>{this.props.Data.description}</span>
-			</div>
+			<>
+				<div className="data-section">
+					<img src={this.props.Data.preview}/>
+					<span>{this.props.Data.description}</span>
+				</div>
+				{this.props.Loading && <div className="loading-spinner"/>}
+			</>
 		)
 	}
 }
@@ -64,25 +71,26 @@ class MangaReader extends react.Component{
 	constructor(props){
 		super(props);
 		this.state = {
-			page: 0,
-			chapterNumber: 0,
+			page: 1,
+			chapterNumber: Symbol(1),
 			chapter: {},
 			loading: true,
 			error: false,
 		}
 	}
 
-	getChapterData(){
+	getChapterData(prevNumber){
+		this.setState({error: false});
 		this.setState({loading: true});
 		axios({
 		    method: 'GET',
-		    url: `/api/manga/${this.props.Data.id}/chapter/${this.state.chapterNumber}`,
+		    url: `/api/manga/${this.props.Data.id}/chapter/${this.state.chapterNumber.value}`,
 	    })
 	    .then(res=> {
-	    	let {result, data} = res.data;
+	    	let {data} = res.data;
+	    	this.setState({page: prevNumber <= data.number ? 1 : data.number_of_pages});
 	    	if(!data.number_of_pages) throw new Error('not found')
 	    	this.setState({chapter: data});
-	    	if(this.state.page > data.number_of_pages) this.setState({page: 1});
 	    	localStorage.setItem(this.props.Data.slug, data.number);
 		})
 		.catch(()=> this.setState({error: true}))
@@ -90,33 +98,48 @@ class MangaReader extends react.Component{
 	}
 
 	componentDidMount(){
-		let data = this.props.Data;
-		let qs = new URLSearchParams(window.location.search);
-		let chapter = qs.get('chapter') || JSON.parse(localStorage.getItem(data.slug)) || 1;
-		let page = Math.max(qs.get('page') || 1, 1);
-		this.setState({chapterNumber: chapter});
-		this.setState({page: page});
+		this.props.OnMount();
 	}
 
 	componentDidUpdate(prevProps, prevState){
-		if(prevState.chapterNumber !== this.state.chapterNumber) this.getChapterData();
+		let data = this.props.Data;
+		if(prevProps.Data !== data){
+			let qs = new URLSearchParams(window.location.search);
+			this.setState({chapterNumber: Symbol(+qs.get('chapter') || JSON.parse(localStorage.getItem(data.slug)) || 1)});
+			this.setState({page: Math.max(+qs.get('page') || 1, 1)});
+		}
+		if(prevState.chapterNumber !== this.state.chapterNumber) this.getChapterData(prevState.chapterNumber.value);
 		if((prevState.chapterNumber !== this.state.chapterNumber) || (prevState.page !== this.state.page)){
-			history.replace(window.location.pathname + `?chapter=${this.state.chapterNumber}&page=${this.state.page}`)
+			history.replace(window.location.pathname + `?chapter=${this.state.chapterNumber.value}&page=${this.state.page}`);
+			window.scrollTo(0 ,0);
 		};
+	}
+
+	slidePage(page){
+		let totalChapter = this.state.chapterNumber.value;
+		if(page > this.state.chapter.number_of_pages){
+			if(totalChapter >= this.props.Data.number_of_chapters) return;
+			return this.setState({chapterNumber: Symbol(totalChapter + 1)});
+		} 
+		if(page < 1){
+			if(totalChapter <= 1) return;
+			return this.setState({chapterNumber: Symbol(totalChapter - 1)});
+		};
+		this.setState({page: page});
 	}
 
 	render(){
 		let {page, chapter, loading, error} = this.state;
-		let data = this.props.Data;
+		let data = this.props.Data
 		return(
 			<div>
-				{chapter.number && (
+				{error || loading ? null : (
 					<>
-						<div className="page-change-arrow" onClick={()=> this.setState({page: Math.max(page - 1, 1)})}/>
-						<img className="page-image" src={`/media/chapters/${data.slug}/${chapter.number}/${page}.jpg`}/>
-						<div className="page-change-arrow" onClick={()=> this.setState({page: Math.min(page + 1, data.count_of_pages)})}/>
-					</>)
-				}
+						<div className="page-change-arrow" onClick={()=> this.slidePage(page - 1)}/>
+							<img className="page-image" src={`/media/chapters/${data.slug}/${chapter.number}/${page}.png`}/>
+						<div className="page-change-arrow" onClick={()=> this.slidePage(page + 1)}/>
+					</>
+				)}
 				{loading && <div className="loading-spinner"/>}
 				{error && <p>not found</p>}
 			</div>
