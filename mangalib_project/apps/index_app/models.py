@@ -1,5 +1,7 @@
 import os, uuid, shutil
+from functools import reduce 
 from django.db import models
+from django.db.models import Q
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, FieldError
 from user_app.models import CustomUser
@@ -40,6 +42,11 @@ class DefaultManager(models.Manager):
 		except:
 			pass
 		return result;
+	def search(self, fields, *strings):
+		filter_arg = Q()
+		for string in strings:
+			filter_arg = filter_arg & reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields, Q())
+		return self.get_queryset().filter(filter_arg)
 
 class Category(models.Model):
 	title = models.CharField(max_length = 200)

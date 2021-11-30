@@ -1,3 +1,4 @@
+import axios from 'axios'; 
 import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
 import reactDOM from 'react-dom';
 
@@ -27,7 +28,7 @@ class Modal extends react.Component{
 					className="modal" 
 					id={this.state.animationStatus && 'active'} 
 					onClick={()=> this.setState({animationStatus: false})} 
-					onTransitionEnd={()=> this.state.animationStatus || this.props.OnUpdate({modalStatus: false})}
+					onTransitionEnd={()=> this.state.animationStatus || this.props.RemoveModal()}
 				>
 					{this.getInner()}
 				</div>,
@@ -38,13 +39,9 @@ class Modal extends react.Component{
 	}
 }
 
-class FilterModal extends Modal{
+export class FilterModal extends Modal{
 	constructor(props){
 		super(props);
-	}
-
-	componentDidMount(){
-		window.addEventListener('open-filter-modal', ()=> this.setState({active: true}));
 	}
 
 	getInner(){
@@ -149,4 +146,19 @@ class FilterCheckbox extends react.Component{
 	}
 }
 
-export default FilterModal;
+export class MangaSearchModal extends Modal{
+	constructor(props){
+		super(props);
+	}
+
+	getInner(){
+		let {Data: manga, MoreThatOnePage: moreThatOnePage, Loading: loading, Error: error} = this.props;
+		return(
+			<div className="search-modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()}>
+				{!error && !loading && manga.map(m=> <p>{m.title}</p>)}
+				{loading && <div className="loading-spinner"/>}
+				{error && <p>not found</p>}
+			</div>
+		)
+	}
+}

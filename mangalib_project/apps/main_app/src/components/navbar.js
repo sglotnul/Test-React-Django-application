@@ -1,27 +1,40 @@
 import react, {Fragment} from 'react';
 import {BrowserRouter as Router, Switch, Route} from 'react-router-dom';
-import createBrowserHistory from 'history/createBrowserHistory'
-
-const history = createBrowserHistory();
 
 class Navbar extends react.Component{
 	constructor(props){
 		super(props)
 		this.state = {
-			fixed: false
+			hidden: false,
 		}
 	}
 
+	onScroll(){
+		let prevScroll = window.pageYOffset;
+		return function(e){
+			if(!this.props.Slide){
+				this.setState({hidden: window.pageYOffset > prevScroll});
+			} else{
+				this.setState({hidden: true});
+				this.props.OnSlide();
+			}
+			prevScroll = window.pageYOffset;
+		}.bind(this);
+	}
+
 	componentDidMount(){
-		window.onscroll = ()=> {
-			this.setState({fixed: window.pageYOffset !== 0})
+		window.onscroll = this.onScroll();
+	}
+
+	componentDidUpdate(prevProps){
+		if(prevProps.Slide !== this.props.Slide){
+			if(this.props.Slide) window.scrollTo(0, 70);
 		}
 	}
 
 	render(){
-		console.log(this.props.Fixed)
 		return(
-			<header id={(this.state.fixed || this.props.Fixed) && 'fixed'}>
+			<header id={this.state.hidden && this.props.WillHide && 'hidden'}>
 				HEADER
 				{this.props.children}
 			</header>

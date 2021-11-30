@@ -11,7 +11,7 @@ class mangaAPI(View):
 		time.sleep(1)
 		if pk is None:
 			filters = MangaFilter(request.GET)	
-			qs = filters.filter(Manga)
+			qs = filters.filter()
 			paginator = Paginator(qs)
 			qs = filters.get_page(paginator)
 			return JsonResponse({'result' : True, 'number of coincidences' : len(qs), 'number of pages' : len(paginator.paginated_queryset), 'data' : MangaSerializer(qs, many = True).data})
