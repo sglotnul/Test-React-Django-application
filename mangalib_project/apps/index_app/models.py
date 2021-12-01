@@ -42,10 +42,11 @@ class DefaultManager(models.Manager):
 		except:
 			pass
 		return result;
-	def search(self, fields, *strings):
+	def search(self, *strings, fields = None):
+		fields_to_search = fields or self.model._meta.get_fields()
 		filter_arg = Q()
 		for string in strings:
-			filter_arg = filter_arg & reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields, Q())
+			filter_arg = filter_arg & reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields_to_search, Q())
 		return self.get_queryset().filter(filter_arg)
 
 class Category(models.Model):

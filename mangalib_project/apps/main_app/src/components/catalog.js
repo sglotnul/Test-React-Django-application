@@ -64,9 +64,8 @@ class Catalog extends react.Component{
 	}
 
 	setSearchString(queryString){
-		const by_title = queryString.get('title');
-		const by_description = queryString.get('description');
-		this.setState({search: by_title || by_description || ''});
+		const searchString = queryString.get('search');
+		this.setState({search: searchString || ''});
 	}
 
 	updateQueryString(){
@@ -94,7 +93,7 @@ class Catalog extends react.Component{
 				</Navbar>
 				<div className="content">
 					<div className="default-page">
-						<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} OnUpdate={this.setState.bind(this, {modalStatus: false})}/>
+						<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} OnUpdate={this.setState.bind(this)}/>
 						<InfiniteScroll 
 							AppliedCategoryList={appliedCategories} 
 							Order={order} 
@@ -103,7 +102,7 @@ class Catalog extends react.Component{
 						/>
 						<FilterModal 
 							Status={this.state.modalStatus}
-							RemoveModal={this.setState.bind(this, {modalStatus: false})}
+							OnUpdate={this.setState.bind(this)}
 							Loading={this.state.loading}
 							CategoryList={categories} 
 							AppliedCategoryList={appliedCategories} 
@@ -166,8 +165,9 @@ class InfiniteScroll extends react.Component{
 		    params: Object.assign({}, params, {page: this.state.page.value}),
 	    })
 	    .then(res=> {
+	    	if(willCancel) return;
 	    	let {result, data, 'number of pages': number_of_pages} = res.data;
-	    	if(willCancel || !number_of_pages) throw new Error('not found');
+	    	if(!number_of_pages) throw new Error('not found');
 			this.setState({numberOfPages: number_of_pages});
 			this.setState({manga: [...this.state.manga, ...data]});
 			this.setState({loading: false});
@@ -275,13 +275,15 @@ class SearchPanel extends react.Component{
 
 	updateMangaList(){
 		this.setState({manga: []});
+		let willCancel = false;
+		this.cancelRequest = ()=> willCancel = true;
 		axios({
 		    method: 'GET',
 		    url: '/api/manga/',
 		    params: {search: this.state.search, page: 1},
-		    cancelToken: new axios.CancelToken(c=> this.cancelRequest = c),
 	    })
 	    .then(res=> {
+	    	if(willCancel) return;
 	    	let {result, data, 'number of pages': number_of_pages} = res.data;
 	    	if(!number_of_pages) throw new Error('not found');
 	    	this.setState({moreThatOnePage: number_of_pages > 1});
@@ -289,7 +291,6 @@ class SearchPanel extends react.Component{
 			this.setState({manga: data});
 		})
 		.catch(e=> {
-			if(axios.isCancel(e)) return;
 			this.setState({loading: false});
 			this.setState({error: true});
 		})
@@ -311,7 +312,7 @@ class SearchPanel extends react.Component{
 					Loading={loading} 
 					Error={error}
 					OnSearch={this.onSubmit.bind(this)}
-					RemoveModal={this.setState.bind(this, {modalStatus: false})}
+					OnUpdate={this.setState.bind(this)}
 				/>
 				<form onSubmit={this.onSubmit.bind(this)}>
 					<input type="text" value={this.state.search} onChange={e=> this.setState({search: e.target.value})}/>

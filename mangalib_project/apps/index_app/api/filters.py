@@ -11,16 +11,14 @@ class FilterParameter():
 	def __set_name__(self, owner, name):
 		self.name = self.template.format(name)
 
+#it could be a simple dict inside a Filter class, but i am practicing in oop, so this is class
 class CleanedData():
-	def __init__(self):
-		self.filters = []
 	def __setattr__(self, name, value):
-		if hasattr(self, 'filters'):
-			self.filters.append(str(name))
 		self.__dict__[str(name)] = value
 	def __iter__(self):
-		for f in self.filters:
-			yield [f, getattr(self, f)]
+		for f in dir(self):
+			if not f.startswith('__'):
+				yield [f, getattr(self, f)]
 
 class Filter():
 	def __init__(self, fields_list):
@@ -35,7 +33,7 @@ class Filter():
 		fields_to_search = getattr(self, 'fields_to_search', [])
 		if model is None:
 			raise Exception('Модель не указана')
-		qs = model.objects.search(fields_to_search, *getattr(self, 'search', '').split(','))
+		qs = model.objects.search(*getattr(self, 'search', '').split(','), fields = fields_to_search)
 		for param, value in self.cleaned_data:
 			qs = qs.include_or_exclude_filter(param, value)
 		return qs

@@ -28,7 +28,7 @@ class Modal extends react.Component{
 					className="modal" 
 					id={this.state.animationStatus && 'active'} 
 					onClick={()=> this.setState({animationStatus: false})} 
-					onTransitionEnd={()=> this.state.animationStatus || this.props.RemoveModal()}
+					onTransitionEnd={()=> this.state.animationStatus || this.props.OnUpdate({modalStatus: false})}
 				>
 					{this.getInner()}
 				</div>,
