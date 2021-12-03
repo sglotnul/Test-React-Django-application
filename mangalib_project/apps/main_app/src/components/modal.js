@@ -6,14 +6,23 @@ class Modal extends react.Component{
 	constructor(props){
 		super(props);
 		this.state = {
+			status: false,
 			animationStatus: false,
 		}
 	}
 
 	componentDidUpdate(prevProps, prevState){
-		if(prevProps.Status != this.props.Status){
-			document.body.id = document.body.id ? '' : 'blocked';
-			setTimeout(this.setState.bind(this, {animationStatus: this.props.Status})); //setTimeout - долбаный костыль, хз почему, но без него не робит
+		if(prevProps.Status !== this.props.Status){
+			if(!this.props.Status){
+				this.setState({animationStatus: false});
+			}else{
+				if(this.state.status) this.setState({animationStatus: true});
+				this.setState({status: true});
+			}
+		};
+		if(prevState.status !== this.state.status){
+			setTimeout(this.setState.bind(this, {animationStatus: this.state.status}));
+			document.body.id = this.state.status ? 'blocked' : '';
 		};
 	}
 
@@ -21,14 +30,20 @@ class Modal extends react.Component{
 		return null;
 	}
 
+	closeModal(){
+		if(this.state.animationStatus) return;
+		this.setState({status: false});
+		this.props.OnUpdate({modalStatus: false});
+	}
+
 	render(){
-		if(this.props.Status && document.getElementById('modals__app')){
+		if(this.state.status && document.getElementById('modals__app')){
 			return reactDOM.createPortal(
 				<div 
 					className="modal" 
 					id={this.state.animationStatus && 'active'} 
 					onClick={()=> this.setState({animationStatus: false})} 
-					onTransitionEnd={()=> this.state.animationStatus || this.props.OnUpdate({modalStatus: false})}
+					onTransitionEnd={this.closeModal.bind(this)}
 				>
 					{this.getInner()}
 				</div>,
@@ -47,7 +62,7 @@ export class FilterModal extends Modal{
 	getInner(){
 		let {OnUpdate, CategoryList: categories, AppliedCategoryList: appliedCategories, Order: order, OrderDir: orderDir} = this.props;
 		return(
-			<div className="modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()}>
+			<div className="modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
 				<form>
 					<CategoryCheckboxMenu CategoryList={categories} AppliedCategoryList={appliedCategories} onChange={OnUpdate}/>
 					<FilterRadioMenu TotalOrdering={order} OrderDirection={orderDir} OnChange={OnUpdate}/>
@@ -154,7 +169,7 @@ export class MangaSearchModal extends Modal{
 	getInner(){
 		let {Data: manga, MoreThatOnePage: moreThatOnePage, Loading: loading, Error: error} = this.props;
 		return(
-			<div className="search-modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()}>
+			<div className="search-modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
 				{!error && !loading && manga.map(m=> <p>{m.title}</p>)}
 				{loading && <div className="loading-spinner"/>}
 				{error && <p>not found</p>}

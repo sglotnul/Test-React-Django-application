@@ -84,7 +84,7 @@ class Catalog extends react.Component{
 	}
 
 	render(){
-		let {categories, appliedCategories, order, orderDirection, search} = this.state;
+		let {modalStatus, categories, appliedCategories, order, orderDirection, search} = this.state;
 		return(
 			<>
 				<SearchPanel Search={this.state.search} OnSearch={s=> this.setState({search: s})}/>
@@ -101,7 +101,7 @@ class Catalog extends react.Component{
 							Search={search}
 						/>
 						<FilterModal 
-							Status={this.state.modalStatus}
+							Status={modalStatus}
 							OnUpdate={this.setState.bind(this)}
 							Loading={this.state.loading}
 							CategoryList={categories} 
@@ -239,11 +239,11 @@ class SearchPanel extends react.Component{
 		super(props);
 		this.state = {
 			search: '',
-			modalStatus: false,
 			manga: [],
 			moreThatOnePage: false,
 			loading: false,
 			error: false,
+			modalStatus: false,
 		}
 	}
 
@@ -252,24 +252,6 @@ class SearchPanel extends react.Component{
 			if(this.cancel) this.cancel();
 			this.setState({modalStatus: false});
 			this.setState({search: this.props.Search});
-		}
-		if(prevState.search !== this.state.search){
-			if(this.cancel) this.cancel();
-			if(this.cancelRequest) this.cancelRequest();
-			let willCancel = false;
-			this.cancel = ()=> willCancel = true;
-			this.setState({loading: true});
-			this.setState({error: false});
-			setTimeout(()=> {
-				if(willCancel) return;
-				if(this.state.search){
-					this.setState({modalStatus: true});
-					this.updateMangaList();
-				} else{
-					this.setState({loading: false});
-					this.setState({manga: []});
-				};
-			}, 800);
 		}
 	}
 
@@ -301,6 +283,24 @@ class SearchPanel extends react.Component{
 		this.props.OnSearch(this.state.search);
 	}
 
+	onInputChange(e){
+		if(this.cancel) this.cancel();
+		if(this.cancelRequest) this.cancelRequest();
+		let value = e.target.value;
+		let willCancel = false;
+		this.cancel = ()=> willCancel = true;
+		this.setState({search: value});
+		this.setState({loading: true});
+		this.setState({error: false});
+		this.setState({modalStatus: !!value});
+		if(value){
+			setTimeout(()=> {
+				if(willCancel) return;
+				this.updateMangaList();
+			}, 800);
+		}
+	}
+
 	render(){
 		let {modalStatus, manga, moreThatOnePage, loading, error} = this.state;
 		return(
@@ -311,11 +311,10 @@ class SearchPanel extends react.Component{
 					MoreThatOnePage={moreThatOnePage}
 					Loading={loading} 
 					Error={error}
-					OnSearch={this.onSubmit.bind(this)}
 					OnUpdate={this.setState.bind(this)}
 				/>
 				<form onSubmit={this.onSubmit.bind(this)}>
-					<input type="text" value={this.state.search} onChange={e=> this.setState({search: e.target.value})}/>
+					<input type="text" value={this.state.search} onChange={this.onInputChange.bind(this)}/>
 					<button type="submit">Поиск</button>
 				</form>
 			</div>
