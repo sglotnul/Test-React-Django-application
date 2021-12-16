@@ -22,12 +22,13 @@ export default class Manga extends react.Component{
 	    })
 	    .then(({data})=> {
 	    	if(!data.result) throw new Error('not found');
-	    	this.setState({loading: false});
 	    	this.setState({data: data.data});
 		})
 		.catch(()=> {
+			this.setState({error: true});
+		})
+		.finally(()=> {
 			this.setState({loading: false});
-			this.setState({error: true})
 		})
 	}
 
@@ -46,7 +47,7 @@ class MangaMainPage extends react.Component{
 	render(){
 		return(
 			<>
-				<Navbar WillHide={false}/>
+				<Navbar/>
 				<div className="content">
 					<div className="default-page">
 						{!this.props.Loading && !this.props.Error && (
@@ -56,7 +57,7 @@ class MangaMainPage extends react.Component{
 								<Link to={{pathname: `/manga/${this.props.Data.id}/read`, state: { fromDashboard: true }}}>READ!</Link>
 							</div>
 						)}
-						{this.props.Loading && <div className="loading-spinner"/>}
+						{this.props.Loading && <div className="loading-spinner centered"/>}
 						{this.props.Error && <p>not found</p>}
 					</div>
 				</div>

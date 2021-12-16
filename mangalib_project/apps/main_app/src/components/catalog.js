@@ -1,4 +1,4 @@
-import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
+import react, {Fragment} from 'react';
 import {Link} from 'react-router-dom';
 import createBrowserHistory from 'history/createBrowserHistory'
 import axios from 'axios'; 
@@ -6,6 +6,14 @@ import {FilterModal, MangaSearchModal} from './modal.js';
 import Navbar from './navbar'
 
 const history = createBrowserHistory();
+
+function turnIntoUrlFormat(categories, order, orderDirection, search){
+	return{
+		categories: categories.join(','),
+		order_by: '-'.repeat(+!orderDirection) + order,
+		search: search,
+	}
+}
 
 class Catalog extends react.Component{
 	constructor(props){
@@ -54,8 +62,10 @@ class Catalog extends react.Component{
 			order = order.slice(1);
 			dir = false;
 		};
-		this.setState({order: order});
-		this.setState({orderDirection: dir});
+		this.setState({
+			order: order,
+			orderDirection: dir,
+		});
 	}
 
 	setAppliedCategoriesList(queryString){
@@ -70,11 +80,7 @@ class Catalog extends react.Component{
 
 	updateQueryString(){
 		let {appliedCategories: categories, order, orderDirection, search} = this.state;
-		let queryObj = {
-			categories: categories.join(','),
-			order_by: '-'.repeat(+!orderDirection) + order,
-			search: search,
-		};
+		let queryObj = turnIntoUrlFormat(categories, order, orderDirection, search);
 		let searchParams = new URLSearchParams('');
 		for(let [key, value] of  Object.entries(queryObj)){
 			if(value) searchParams.set(key, value);
@@ -129,9 +135,9 @@ class InfiniteScroll extends react.Component{
 		this.lastElemRef = node=> {
 			let {page, numberOfPages} = this.state;
 			if(this.observer) this.observer.disconnect();
-			this.observer = new IntersectionObserver(entries=> {
+			this.observer = new IntersectionObserver((entries, observer)=> {
 				if(entries[0].isIntersecting){
-					if(page.value < numberOfPages) this.setState({page: Symbol(page.value + 1)});
+					if(page < numberOfPages) this.setState({page: page + 1});
 				}
 			})
 			if(node) this.observer.observe(node);
@@ -139,10 +145,12 @@ class InfiniteScroll extends react.Component{
 	}
 
 	componentDidUpdate(prevProps, prevState){
-		const update = (prevProps.AppliedCategoryList !== this.props.AppliedCategoryList) || (prevProps.Order !== this.props.Order) || (prevProps.OrderDir !== this.props.OrderDir) || (prevProps.Search !== this.props.Search);
+		const update = +(prevProps.AppliedCategoryList !== this.props.AppliedCategoryList) || (prevProps.Order !== this.props.Order) || (prevProps.OrderDir !== this.props.OrderDir) || (prevProps.Search !== this.props.Search);
 		if(update){
-			this.setState({manga: []});
-			this.setState({page: Symbol(1)});
+			this.setState({
+				manga: [],
+				page: 1,
+			}, this.updateMangaList.bind(this));
 		}
 		if(prevState.page !== this.state.page){
 			this.updateMangaList();
@@ -152,29 +160,32 @@ class InfiniteScroll extends react.Component{
 	updateMangaList(){
 		if(this.cancel) this.cancel();
 
-		let willCancel = false;
-
-		this.cancel = ()=> willCancel = true;
-
 		const params = Object.fromEntries(new URLSearchParams(history.location.search));
-		this.setState({error: false});
-		this.setState({loading: true});
+		this.setState({
+			error: false,
+			loading: true,
+		});
 		axios({
 		    method: 'GET',
 		    url: '/api/manga/',
-		    params: Object.assign({}, params, {page: this.state.page.value}),
+		    params: Object.assign(params, {page: this.state.page}),
+		    cancelToken: new axios.CancelToken(c=> this.cancel = c),
 	    })
 	    .then(res=> {
-	    	if(willCancel) return;
 	    	let {result, data, 'number of pages': number_of_pages} = res.data;
 	    	if(!number_of_pages) throw new Error('not found');
-			this.setState({numberOfPages: number_of_pages});
-			this.setState({manga: [...this.state.manga, ...data]});
-			this.setState({loading: false});
+			this.setState({
+				numberOfPages: number_of_pages,
+				manga: [...this.state.manga, ...data],
+				loading: false,
+			});
 		})
 		.catch(e=>{
-			this.setState({loading: false});
-			this.setState({error: true});
+			if(axios.isCancel(e)) return
+			this.setState({
+				loading: false,
+				error: true
+			});
 		})
 	}
 
@@ -250,8 +261,10 @@ class SearchPanel extends react.Component{
 	componentDidUpdate(prevProps, prevState){
 		if(prevProps.Search !== this.props.Search){
 			if(this.cancel) this.cancel();
-			this.setState({modalStatus: false});
-			this.setState({search: this.props.Search});
+			this.setState({
+				modalStatus: false,
+				search: this.props.Search,
+			});
 		}
 	}
 
@@ -268,13 +281,17 @@ class SearchPanel extends react.Component{
 	    	if(willCancel) return;
 	    	let {result, data, 'number of pages': number_of_pages} = res.data;
 	    	if(!number_of_pages) throw new Error('not found');
-	    	this.setState({moreThatOnePage: number_of_pages > 1});
-			this.setState({loading: false});
-			this.setState({manga: data});
+	    	this.setState({
+	    		moreThatOnePage: number_of_pages > 1,
+	    		manga: data,
+	    		loading: false,
+	    	});
 		})
 		.catch(e=> {
-			this.setState({loading: false});
-			this.setState({error: true});
+			this.setState({
+				loading: false,
+				error: true,
+			});
 		})
 	}
 
@@ -289,10 +306,12 @@ class SearchPanel extends react.Component{
 		let value = e.target.value;
 		let willCancel = false;
 		this.cancel = ()=> willCancel = true;
-		this.setState({search: value});
-		this.setState({loading: true});
-		this.setState({error: false});
-		this.setState({modalStatus: !!value});
+		this.setState({
+			search: value,
+			loading: true,
+			error: false,
+			modalStatus: !!value,
+		});
 		if(value){
 			setTimeout(()=> {
 				if(willCancel) return;

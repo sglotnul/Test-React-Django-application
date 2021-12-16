@@ -13,7 +13,7 @@ header{
 	align-items: center;
 	top: 0;
 	left: 0;
-	height: 70px;
+	height: 50px;
 	width:100%;
 	background-color: #2E2E2E;
 	transition: opacity .3s;
@@ -28,6 +28,19 @@ footer{
 }
 input, .closing-area, .modal-open-arrow, .page-change-arrow{
 	cursor: pointer;
+}
+.absolute{
+	position: absolute;
+	top: 0;
+	left: 0;
+	height: 100%;
+}
+.hidden{
+	display: none;
+}
+.centered{
+	margin-left: auto;
+	margin-right: auto;
 }
 .loading-spinner{
 	display: inline-block;
@@ -57,7 +70,7 @@ input, .closing-area, .modal-open-arrow, .page-change-arrow{
 	position: relative;
 	width: 100%;
 	min-height: 120vh;
-	margin-top: 70px;
+	margin-top: 50px;
 }
 .default-page{
 	position: relative;
@@ -263,27 +276,65 @@ input, .closing-area, .modal-open-arrow, .page-change-arrow{
 }
 .manga-page{
 	display: flex;
-	position: relative;
 	justify-content: center;
+	position: relative;
 	width: 100%;
 }
-.page-image{
-	object-fit: contain;
+.page-list{
+	margin-left: auto;
+	margin-right: auto;
+}
+.page-list#incolumn{
+	width: 720px;
+}
+.page-wrapper{
+	min-height: 340px;
 	max-width: 100%;
 }
-.page-change-arrow{
+.page-wrapper[data-loaded]{
+	background: url(loader.svg);
+    background-repeat: no-repeat;
+    background-size: 80px;
+    background-position: 50%;
+}
+.page-wrapper[data-loaded][data-initial]{
+	height: 100vh;
+	background: url(loader.svg);
+    background-repeat: no-repeat;
+    background-size: 80px;
+    background-position: 50%;
+}
+.page-wrapper#hidden{
+	display: none;
+}
+.page-image{
+	max-width: 100%;
+	object-fit: contain;
+}
+.page-change-area{
 	position: absolute;
 	width: 50%;
 	min-height: 100%;
 }
 @media only screen and (max-width: 1100px){
-	.page-change-arrow{
+	.page-change-area{
 		min-width: 50%;
 	}
 }
-.page-change-arrow:first-child{
+.page-change-area:not(:first-child):not(:last-child){
 	left: 0;
 }
-.page-change-arrow:last-child{
+.page-change-area:last-child{
 	right: 0;
+}
+.page-change-btn{
+	width: 50%;
+	height: 20px;
+	border: 2px solid #000;
+	background-color: #fff;
+	color: #000;
+}
+.reader-menu{
+	width: 100%;
+	display: flex;
 }

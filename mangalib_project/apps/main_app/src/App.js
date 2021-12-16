@@ -1,4 +1,5 @@
-import './style.css'
+import './style.css';
+import './loader.svg';
 import react, {Fragment} from 'react';
 import Navbar from './components/navbar.js';
 import Footer from './components/footer.js';
