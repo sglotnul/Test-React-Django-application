@@ -1,9 +1,10 @@
 import react, {Fragment} from 'react';
 import {Link} from 'react-router-dom';
-import createBrowserHistory from 'history/createBrowserHistory'
+import createBrowserHistory from 'history/createBrowserHistory';
 import axios from 'axios'; 
-import {FilterModal, MangaSearchModal} from './modal.js';
-import Navbar from './navbar'
+import {FilterModal} from './modal.js';
+import Navbar from './navbar';
+import SearchPanel from './search_panel.js';
 
 const history = createBrowserHistory();
 
@@ -90,7 +91,8 @@ class Catalog extends react.Component{
 	}
 
 	render(){
-		let {modalStatus, categories, appliedCategories, order, orderDirection, search} = this.state;
+		const {modalStatus, categories, appliedCategories, order, orderDirection, search, loading} = this.state;
+
 		return(
 			<>
 				<SearchPanel Search={this.state.search} OnSearch={s=> this.setState({search: s})}/>
@@ -109,7 +111,7 @@ class Catalog extends react.Component{
 						<FilterModal 
 							Status={modalStatus}
 							OnUpdate={this.setState.bind(this)}
-							Loading={this.state.loading}
+							Loading={loading}
 							CategoryList={categories} 
 							AppliedCategoryList={appliedCategories} 
 							Order={order} 
@@ -145,7 +147,7 @@ class InfiniteScroll extends react.Component{
 	}
 
 	componentDidUpdate(prevProps, prevState){
-		const update = +(prevProps.AppliedCategoryList !== this.props.AppliedCategoryList) || (prevProps.Order !== this.props.Order) || (prevProps.OrderDir !== this.props.OrderDir) || (prevProps.Search !== this.props.Search);
+		const update = (prevProps.AppliedCategoryList !== this.props.AppliedCategoryList) || (prevProps.Order !== this.props.Order) || (prevProps.OrderDir !== this.props.OrderDir) || (prevProps.Search !== this.props.Search);
 		if(update){
 			this.setState({
 				manga: [],
@@ -190,14 +192,15 @@ class InfiniteScroll extends react.Component{
 	}
 
 	render(){
+		const {manga, loading, error} = this.state;
+		const getRef = index=> index + 1 === manga.length ? this.lastElemRef : null;
+
 		return(
-			<>
-				<div className="container">
-					{this.state.manga.map((m, index)=> <MangaCard key={index} Data={m} Ref={index + 1 === this.state.manga.length ? this.lastElemRef : null}/>)}
-					{this.state.loading && <div className="loading-spinner"/>}
-					{this.state.error && <p>not found</p>}
-				</div>
-			</>
+			<div className="container">
+				{manga.map((m, index)=> <MangaCard key={index} Data={m} Ref={getRef(index)}/>)}
+				{loading && <div className="loading-spinner"/>}
+				{error && <p>not found</p>}
+			</div>
 		)
 	}
 }
@@ -208,10 +211,11 @@ class MangaCard extends react.Component{
 	}
 
 	render(){
-		const data = this.props.Data;
+		const {Data, Ref} = this.props;
+
 		return(
-			<Link to={{pathname: `/manga/${data.id}`, state: { fromDashboard: true }}} className="card" ref={this.props.Ref}>
-				{data.title}
+			<Link to={{pathname: `/manga/${Data.id}`, state: {fromDashboard: true}}} className="card" ref={Ref}>
+				{Data.title}
 			</Link>
 		)
 	}
@@ -233,110 +237,16 @@ class CategoriesBar extends react.Component{
 	}
 
 	render(){
+		const {AppliedCategories, Categories} = this.props;
+
 		return(
 			<ul className="categories-list">
-				{this.props.AppliedCategories.map(id=> {
-					let category = this.props.Categories[id];
-					if(category) return <li className="category-item" key={id} onClick={()=> this.onCategoryDelete(id)}>{category.title}<div className="closing-area"></div></li>;
+				{AppliedCategories.map(id=> {
+					let category = Categories[id];
+					if(category) return <li className="category-item" key={id} onClick={()=> this.onCategoryDelete(id)}>{category.title}<div className="closing-area"/></li>;
 					return null;
 				})}
 			</ul>
-		)
-	}
-}
-
-class SearchPanel extends react.Component{
-	constructor(props){
-		super(props);
-		this.state = {
-			search: '',
-			manga: [],
-			moreThatOnePage: false,
-			loading: false,
-			error: false,
-			modalStatus: false,
-		}
-	}
-
-	componentDidUpdate(prevProps, prevState){
-		if(prevProps.Search !== this.props.Search){
-			if(this.cancel) this.cancel();
-			this.setState({
-				modalStatus: false,
-				search: this.props.Search,
-			});
-		}
-	}
-
-	updateMangaList(){
-		this.setState({manga: []});
-		let willCancel = false;
-		this.cancelRequest = ()=> willCancel = true;
-		axios({
-		    method: 'GET',
-		    url: '/api/manga/',
-		    params: {search: this.state.search, page: 1},
-	    })
-	    .then(res=> {
-	    	if(willCancel) return;
-	    	let {result, data, 'number of pages': number_of_pages} = res.data;
-	    	if(!number_of_pages) throw new Error('not found');
-	    	this.setState({
-	    		moreThatOnePage: number_of_pages > 1,
-	    		manga: data,
-	    		loading: false,
-	    	});
-		})
-		.catch(e=> {
-			this.setState({
-				loading: false,
-				error: true,
-			});
-		})
-	}
-
-	onSubmit(e){
-		e.preventDefault();
-		this.props.OnSearch(this.state.search);
-	}
-
-	onInputChange(e){
-		if(this.cancel) this.cancel();
-		if(this.cancelRequest) this.cancelRequest();
-		let value = e.target.value;
-		let willCancel = false;
-		this.cancel = ()=> willCancel = true;
-		this.setState({
-			search: value,
-			loading: true,
-			error: false,
-			modalStatus: !!value,
-		});
-		if(value){
-			setTimeout(()=> {
-				if(willCancel) return;
-				this.updateMangaList();
-			}, 800);
-		}
-	}
-
-	render(){
-		let {modalStatus, manga, moreThatOnePage, loading, error} = this.state;
-		return(
-			<div className="search-panel" id={modalStatus && "active"}>
-				<MangaSearchModal 
-					Status={modalStatus} 
-					Data={manga} 
-					MoreThatOnePage={moreThatOnePage}
-					Loading={loading} 
-					Error={error}
-					OnUpdate={this.setState.bind(this)}
-				/>
-				<form onSubmit={this.onSubmit.bind(this)}>
-					<input type="text" value={this.state.search} onChange={this.onInputChange.bind(this)}/>
-					<button type="submit">Поиск</button>
-				</form>
-			</div>
 		)
 	}
 }

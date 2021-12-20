@@ -11,7 +11,7 @@ class FilterParameter():
 	def __set_name__(self, owner, name):
 		self.name = self.template.format(name)
 
-#it could be a simple dict inside a Filter class, but i am practicing in oop, so this is class
+#it could be a simple dict inside a Filter class, but i am practicing in oop, so this an object
 class CleanedData():
 	def __setattr__(self, name, value):
 		self.__dict__[str(name)] = value
@@ -28,12 +28,13 @@ class Filter():
 			if value:
 				setattr(self, field, value)
 
-	def filter(self):
+	def filter(self, queryset=None):
 		model = getattr(self, 'model')
-		fields_to_search = getattr(self, 'fields_to_search', [])
 		if model is None:
 			raise Exception('Модель не указана')
-		qs = model.objects.search(*getattr(self, 'search', '').split(','), fields = fields_to_search)
+		qs = queryset
+		if qs is None: 
+			qs = model.objects.all()
 		for param, value in self.cleaned_data:
 			qs = qs.include_or_exclude_filter(param, value)
 		return qs
@@ -51,8 +52,9 @@ class MangaFilter(Filter):
 	redacted_at = FilterParameter()
 	categories = FilterParameter('{}__id')
 
-	def filter(self, *args, **kwargs):
-		qs = super().filter(*args, **kwargs)
+	def filter(self):
+		search_params = getattr(self, 'search', '').split(',')
+		qs = super().filter(self.model.objects.search(*search_params, fields=self.fields_to_search))
 		qs = qs.safe_order_by(getattr(self, 'order_by', 'title'))
 		return qs
 

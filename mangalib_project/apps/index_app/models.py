@@ -42,8 +42,10 @@ class DefaultManager(models.Manager):
 		except:
 			pass
 		return result;
-	def search(self, *strings, fields = None):
-		fields_to_search = fields or self.model._meta.get_fields()
+	def search(self, *strings, fields=None):
+		fields_to_search = fields
+		if fields_to_search is None:
+			fields_to_search = ['title__contains',]
 		filter_arg = Q()
 		for string in strings:
 			filter_arg = filter_arg & reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields_to_search, Q())

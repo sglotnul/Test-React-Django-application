@@ -1,6 +1,8 @@
 import axios from 'axios'; 
 import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
 import reactDOM from 'react-dom';
+import Loader from './loader.js';
+import NotFoundError from './not_found.js';
 
 class Modal extends react.Component{
 	constructor(props){
@@ -26,17 +28,19 @@ class Modal extends react.Component{
 		};
 	}
 
-	getInner(){
-		return null;
-	}
-
 	closeModal(){
 		if(this.state.animationStatus) return;
 		this.setState({status: false});
 		this.props.OnUpdate({modalStatus: false});
 	}
 
+	getInner(){
+		return null;
+	}
+
 	render(){
+		const modalBody = this.getInner();
+
 		if(this.state.status && document.getElementById('modals__app')){
 			return reactDOM.createPortal(
 				<div 
@@ -45,7 +49,7 @@ class Modal extends react.Component{
 					onClick={()=> this.setState({animationStatus: false})} 
 					onTransitionEnd={this.closeModal.bind(this)}
 				>
-					{this.getInner()}
+					{modalBody}
 				</div>,
 				document.getElementById('modals__app')
 			)
@@ -60,9 +64,11 @@ export class FilterModal extends Modal{
 	}
 
 	getInner(){
-		let {OnUpdate, CategoryList: categories, AppliedCategoryList: appliedCategories, Order: order, OrderDir: orderDir} = this.props;
+		const {animationStatus} = this.state;
+		const {OnUpdate, CategoryList: categories, AppliedCategoryList: appliedCategories, Order: order, OrderDir: orderDir} = this.props;
+
 		return(
-			<div className="modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
+			<div className="modal-body" id={animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
 				<form>
 					<CategoryCheckboxMenu CategoryList={categories} AppliedCategoryList={appliedCategories} onChange={OnUpdate}/>
 					<FilterRadioMenu TotalOrdering={order} OrderDirection={orderDir} OnChange={OnUpdate}/>
@@ -167,12 +173,14 @@ export class MangaSearchModal extends Modal{
 	}
 
 	getInner(){
-		let {Data: manga, MoreThatOnePage: moreThatOnePage, Loading: loading, Error: error} = this.props;
+		const {animationStatus} = this.state;
+		const {Data: manga, MoreThatOnePage: moreThatOnePage, Loading: loading, Error: error} = this.props;
+
 		return(
-			<div className="search-modal-body" id={this.state.animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
+			<div className="search-modal-body" id={animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
 				{!error && !loading && manga.map(m=> <p>{m.title}</p>)}
-				{loading && <div className="loading-spinner"/>}
-				{error && <p>not found</p>}
+				{loading && <Loader/>}
+				{error && <NotFoundError/>}
 			</div>
 		)
 	}

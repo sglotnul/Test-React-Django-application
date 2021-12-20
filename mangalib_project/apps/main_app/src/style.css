@@ -201,7 +201,7 @@ input, .closing-area, .modal-open-arrow, .page-change-arrow{
 }
 .search-modal-body{
 	position: absolute;
-	top: 70px;
+	top: 50px;
 	right: 0;
 	height: 0px;
 	width: 400px;
@@ -297,7 +297,7 @@ input, .closing-area, .modal-open-arrow, .page-change-arrow{
     background-size: 80px;
     background-position: 50%;
 }
-.page-wrapper[data-loaded][data-initial]{
+.page-wrapper[data-loaded][data-current]{
 	height: 100vh;
 	background: url(loader.svg);
     background-repeat: no-repeat;
@@ -308,6 +308,7 @@ input, .closing-area, .modal-open-arrow, .page-change-arrow{
 	display: none;
 }
 .page-image{
+	user-select: none;
 	max-width: 100%;
 	object-fit: contain;
 }

@@ -7,6 +7,7 @@ class Navbar extends react.Component{
 	}
 
 	render(){
+		console.log('navbar');
 		return(
 			<header id={this.props.Hide && 'hidden'}>
 				HEADER

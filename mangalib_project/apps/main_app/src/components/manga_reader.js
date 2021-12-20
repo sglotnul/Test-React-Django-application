@@ -1,8 +1,10 @@
-import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
+import react, {Fragment, useMemo} from 'react';
 import {Link} from 'react-router-dom';
 import createBrowserHistory from 'history/createBrowserHistory';
 import axios from 'axios'; 
 import Navbar from './navbar.js';
+import Loader from './loader.js';
+import NotFoundError from './not_found.js';
 
 const history = createBrowserHistory();
 
@@ -212,37 +214,84 @@ class MangaReader extends react.Component{
 	}
 
 	render(){
-		let {displayAsList, page, visiblePages, chapter, loading, error, hideNavbar} = this.state;
-		let data = this.props.Data;
-		let range = Array.from(new Range(1, chapter.number_of_pages));
+		const {Error: Err, Loading, Data} = this.props;
+		const {displayAsList, page, visiblePages, chapter, loading, error, hideNavbar} = this.state;
+		const range = Array.from(new Range(1, chapter.number_of_pages));
+		const errorWasRised = error || Err;
+		const dataStillLoading = loading || Loading;
+		
 		return(
 			<>
 				<Navbar Hide={hideNavbar}>
-					<Link to={{pathname: `/manga/${data.id}`, state: {fromDashboard: true}}}>{data.title}</Link>
-					<button onClick={()=> this.setState({displayAsList: +!this.state.displayAsList})}></button>
+					<Link to={{pathname: `/manga/${Data.id}`, state: {fromDashboard: true}}}>{Data.title}</Link>
+					<button onClick={()=> this.setState({displayAsList: +!displayAsList})}></button>
 				</Navbar>
 				<div className="content">
 					<div className="manga-page">
-						{!error && !loading && !this.props.Error && (
-							<>
-								<div className="page-list" id={displayAsList && "incolumn"}>
-									{range.map(index=> (
-										<div className={'page-wrapper' + ((!displayAsList && (index !== page )) ? ' hidden' : '')} id={index} data-loaded="false" {...((index == page) ? {['data-initial']: "true"} : {})} onLoad={e=> delete e.target.closest('div').dataset.loaded}>
-											<img className="page-image" src={visiblePages.includes(index) && `/media/chapters/${data.slug}/${chapter.number}/${index}.jpg`}/>
-										</div>						
-									))}
-									<div className={'reader-menu' + (!displayAsList ? ' absolute' : '')}>
-										<div className={`page-change-${displayAsList ? 'btn' : 'area'}`} onClick={this.slidePrevious.bind(this)}/>
-										<div className={`page-change-${displayAsList ? 'btn' : 'area'}`} onClick={this.slideNext.bind(this)}/>
-									</div>
-								</div>
-							</>
-						)}
-						{(loading || this.props.Loading) && !this.props.Error && <div className="loading-spinner centered"/>}
-						{(error || this.props.Error) && <p>not found</p>}
+						{!errorWasRised && !dataStillLoading && <PageList
+							Range={range}
+							Page={page}
+							Chapter={chapter}
+							Data={Data}
+							DisplayAsList={displayAsList}
+							VisiblePages={visiblePages}
+							SlideNext={this.slideNext.bind(this)}
+							SlidePrevious={this.slidePrevious.bind(this)}
+						/>}
+						{dataStillLoading && !this.props.Error && <Loader/>}
+						{errorWasRised && <NotFoundError/>}
 					</div>
 				</div>
 			</>
+		)
+	}
+}
+
+class PageList extends react.Component{
+	constructor(props){
+		super(props);
+	}
+
+	render(){
+		console.log('page-list');
+		const {Range, Page, Chapter, Data, DisplayAsList, VisiblePages, SlideNext, SlidePrevious} = this.props;
+		const getSrc = index=> VisiblePages.includes(index) && `/media/chapters/${Data.slug}/${Chapter.number}/${index}.jpg`;
+		const getImageContainerClassName = index=> 'page-wrapper' + ((!DisplayAsList && (index !== Page)) ? ' hidden' : '');
+		const getDataCurentAttribute = index=> (index == Page) ? {['data-current']: "true"} : {};
+		const onImageLoad = e=> delete e.target.closest('div').dataset.loaded;
+
+		return(
+			<div className="page-list" id={DisplayAsList && "incolumn"}>
+				{Range.map(index=> (
+					<div 
+						{...getDataCurentAttribute(index)} 
+						className={getImageContainerClassName(index)} 
+						id={index} 
+						data-loaded="false" 
+						onLoad={onImageLoad}
+					>
+						<img className="page-image" src={getSrc(index)}/>
+					</div>						
+				))}
+				<ReaderMenu
+					DisplayAsList={DisplayAsList}
+					SlidePrevious={SlidePrevious}
+					SlideNext={SlideNext}
+				/>
+			</div>
+		)
+	}
+}
+
+class ReaderMenu extends react.Component{
+	render(){
+		const {DisplayAsList, SlideNext, SlidePrevious} = this.props;
+
+		return(
+			<div className={'reader-menu' + (!DisplayAsList ? ' absolute' : '')}>
+				<div className={`page-change-${DisplayAsList ? 'btn' : 'area'}`} onClick={SlidePrevious}/>
+				<div className={`page-change-${DisplayAsList ? 'btn' : 'area'}`} onClick={SlideNext}/>
+			</div>
 		)
 	}
 }
