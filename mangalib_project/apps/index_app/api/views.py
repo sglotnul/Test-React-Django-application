@@ -14,7 +14,7 @@ class mangaAPI(View):
 			qs = filters.filter()
 			paginator = Paginator(qs)
 			qs = filters.get_page(paginator)
-			return JsonResponse({'result' : True, 'number of coincidences' : len(qs), 'number of pages' : len(paginator.paginated_queryset), 'data' : MangaSerializer(qs, many = True).data})
+			return JsonResponse({'result' : True, 'number_of_coincidences' : len(qs), 'number_of_pages' : len(paginator.paginated_queryset), 'data' : MangaSerializer(qs, many = True).data})
 		object = Manga.objects.safe_get(pk=pk)
 		if object:
 			return JsonResponse({'result' : True, 'data' : MangaSerializer(object).data})
@@ -25,7 +25,7 @@ class categoriesAPI(View):
 		time.sleep(2)
 		if pk is None:
 			qs = Category.objects.all()
-			return JsonResponse({'result' : True, 'number of coincidences' : len(qs), 'data' : CategorySerializer(qs, many = True).data})
+			return JsonResponse({'result' : True, 'number_of_coincidences' : len(qs), 'data' : CategorySerializer(qs, many = True).data})
 		object = Category.objects.safe_get(pk=pk)
 		if object:
 			return JsonResponse({'result' : True, 'data' : CategorySerializer(object).data})
