@@ -14,7 +14,7 @@ export default function App(props){
 	useEffect(()=> {
 		Object.defineProperty(Symbol.prototype, "value", {
 			get(){
-				return parseInt(this.description) || 1;
+				return parseInt(this.description);
 			}
 		})
 	}, []);

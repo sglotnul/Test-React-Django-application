@@ -48,7 +48,7 @@ class DefaultManager(models.Manager):
 			fields_to_search = ['title__contains',]
 		filter_arg = Q()
 		for string in strings:
-			filter_arg = filter_arg & reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields_to_search, Q())
+			filter_arg = filter_arg | reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields_to_search, Q())
 		return self.get_queryset().filter(filter_arg)
 
 class Category(models.Model):

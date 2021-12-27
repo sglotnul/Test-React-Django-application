@@ -1,21 +1,39 @@
-import react, {Fragment, useState, useEffect, useCallback, useRef} from 'react';
-import {Link} from 'react-router-dom';
-import createBrowserHistory from 'history/createBrowserHistory';
+import react, {Fragment, useState, useEffect, useCallback, useMemo, useRef} from 'react';
+import {Link, useHistory} from 'react-router-dom';
 import axios from 'axios'; 
 import {FilterModal} from './modal.js';
 import Navbar from './navbar';
 import SearchPanel from './search_panel.js';
 import Loader from './loader.js';
 import NotFoundError from './not_found.js';
+import useUpdateMangaList from './hooks/useUpdateMangaList.js';
 
-const history = createBrowserHistory();
-
-function turnIntoUrlFormat(categories, order, orderDirection, search){
-	return{
-		categories: categories.join(','),
+function turnObjectElementsIntoUrlFormat({appliedCategories, order, orderDirection, search}){
+	let queryObj = {
+		categories: appliedCategories.join(','),
 		order_by: '-'.repeat(+!orderDirection) + order,
 		search: search,
+	};
+
+	Object.entries(queryObj).forEach(([key, value])=> {
+		if(!value) delete queryObj[key];
+	})
+
+	return queryObj;
+}
+
+function getQueryString(...params){
+	let queryObj = turnObjectElementsIntoUrlFormat(...params);
+	let searchParams = new URLSearchParams('');
+	for(let [key, value] of  Object.entries(queryObj)){
+		if(value) searchParams.set(key, value);
 	}
+	return searchParams.toString()
+}
+
+function updateQueryString(history, queryObj){
+	const queryString = getQueryString(queryObj);
+	history.replace(window.location.pathname + '?'.repeat(+!!queryString) + queryString);
 }
 
 function categoriesListUpdate(updateCategoriesFunc){
@@ -31,11 +49,11 @@ function categoriesListUpdate(updateCategoriesFunc){
 }
 
 function setOrdering(queryString, updateOrderFunc, updateOrderDirectionFunc){
-	let order = queryString.get('order_by') || 'title';
-	let dir = true;
+	let order = queryString.get('order_by') || '';
+	let dir = 1;
 	if(order.startsWith('-')){
 		order = order.slice(1);
-		dir = false;
+		dir = 0;
 	};
 	updateOrderFunc(order);
 	updateOrderDirectionFunc(dir);
@@ -52,14 +70,11 @@ function setSearchString(queryString, updateSearchFunc){
 	updateSearchFunc(searchString);
 }
 
-function updateQueryString(categories, order, orderDirection, search){
-	let queryObj = turnIntoUrlFormat(categories, order, orderDirection, search);
-	let searchParams = new URLSearchParams('');
-	for(let [key, value] of  Object.entries(queryObj)){
-		if(value) searchParams.set(key, value);
-	}
-	let queryString = searchParams.toString()
-	history.replace(window.location.pathname + '?'.repeat(+!!queryString) + queryString);
+function getParamsFromUrl(setCategoryList, setOrder, setOrderDirection, setSearch){
+	const qs = new URLSearchParams(window.location.search);
+	setAppliedCategoriesList(qs, setCategoryList);
+	setOrdering(qs, setOrder, setOrderDirection);
+	setSearchString(qs, setSearch);
 }
 
 export default function Catalog(props){
@@ -70,40 +85,55 @@ export default function Catalog(props){
 	const [search, setSearch] = useState('');
 	const [modalStatus, setModalStatus] = useState(false);
 
-	useEffect(()=> {
-		const qs = new URLSearchParams(window.location.search);
-		categoriesListUpdate(setCategories);
-		setAppliedCategoriesList(qs, setAppliedCategories);
-		setOrdering(qs, setOrder, setOrderDirection);
-		setSearchString(qs, setSearch);
-	}, []);
+	const history = useHistory();
+
+	const showModal = useCallback(()=> setModalStatus(true), []);
+	const closeModal = useCallback(()=> setModalStatus(false), []);
+
+	const chageState = (callback, ...state)=> {
+		return function(){
+			callback(...state);
+		}
+	}
+
+	const queryObject = useMemo(()=> {
+		return {
+			appliedCategories, 
+			order,
+			orderDirection,
+			search,
+		}
+	}, [appliedCategories, order, orderDirection, search])
 
 	useEffect(()=> {
-		updateQueryString(appliedCategories, order, orderDirection, search);
-	}, [appliedCategories, order, orderDirection, search]);
+		categoriesListUpdate(setCategories);
+		getParamsFromUrl(setAppliedCategories, setOrder, setOrderDirection, setSearch);
+	}, []);
+
+	useEffect(()=> updateQueryString(history, queryObject), [queryObject])
 
 	return(
 		<>
-			<SearchPanel Search={search} OnSearch={s=> setSearch(s)}/>
+			<SearchPanel Search={search} OnSearch={setSearch}/>
 			<Navbar>
-				<div className="modal-open-arrow" onClick={()=> setModalStatus(true)}/>
+				<div className="modal-open-arrow" onClick={showModal}/>
 			</Navbar>
 			<div className="content">
 				<div className="default-page">
-					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} OnUpdate={()=> null}/>
+					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} ChangeAppliedCategoryList={setAppliedCategories}/>
 					<InfiniteScroll 
-						AppliedCategoryList={appliedCategories} 
-						Order={order} 
-						OrderDir={orderDirection}
-						Search={search}
+						Query={queryObject}
 					/>
 					<FilterModal 
 						Status={modalStatus}
-						OnUpdate={()=> setModalStatus(false)}
 						CategoryList={categories} 
 						AppliedCategoryList={appliedCategories} 
 						Order={order} 
 						OrderDir={orderDirection}
+						CloseModal={closeModal}
+						ChangeAppliedCategoryList={setAppliedCategories}
+						ChangeOrdering={setOrder}
+						ChangeOrderingDirection={setOrderDirection}
 					/>
 				</div>
 	        </div>
@@ -111,109 +141,75 @@ export default function Catalog(props){
 	)
 }
 
-function useUpdateMangaList(page, ...params) {
-	const [mangaList, setMangaList] = useState([]);
-	const [numberOfPages, setNumberOfPages] = useState(0);
-	const [loading, setLoading] = useState(true);
-	const [error, setError] = useState(false);
-
-	useEffect(setMangaList.bind(null, []), [...params]);
-
-	useEffect(()=> {
-		const queryParams = Object.fromEntries(new URLSearchParams(history.location.search));
-		let cancel;
-		setLoading(true);
-		setError(false);
-		axios({
-			method: 'GET',
-		    url: '/api/manga/',
-		    params: Object.assign(queryParams, {page: page}),
-		    cancelToken: new axios.CancelToken(c=> cancel = c),
-		}).then(res => {
-			let {data: manga, number_of_pages} = res.data;
-	    	if(!number_of_pages) throw new Error('not found');
-	    	setNumberOfPages(number_of_pages);
-	    	setMangaList(prevMangaList=> [...prevMangaList, ...manga]);
-		}).catch(e => {
-			if(axios.isCancel(e)) return;
-			setError(true);
-		}).finally(()=> setLoading(false));
-		return cancel;
-	}, [page, ...params]);
-
-	return {loading, error, mangaList, numberOfPages};
-}
-
 function InfiniteScroll(props){
-	const [page, setPage] = useState([]);
+	const [page, setPage] = useState(1);
 
-	const {AppliedCategoryList, Order, OrderDir, Search} = props;
-	const {loading, error, mangaList, numberOfPages} = useUpdateMangaList(page, AppliedCategoryList, Order, OrderDir, Search);
+	const haveUrlParamsReceived = useRef(false);
+	
+	const {Query: query} = props;
+	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, query, haveUrlParamsReceived.current);
 
 	const observer = useRef();
 	const lastElemRef = useCallback(node=> {
-		if(observer.current) observer.current.disconnect();
+		disconnectObserver();
 		observer.current = new IntersectionObserver((entries, observer)=> {
 			if(entries[0].isIntersecting){
 				if(page < numberOfPages) setPage(page + 1);
 			}
 		})
 		if(node) observer.current.observe(node);
-	});
+	}, [mangaList]);
 
-	useEffect(setPage.bind(null, 1), [AppliedCategoryList, Order, OrderDir, Search]);
+	const disconnectObserver = ()=> {
+		if(observer.current) observer.current.disconnect();
+	}
+
+	useEffect(()=> disconnectObserver, []);
+	useEffect(()=> {
+		haveUrlParamsReceived.current = true;
+		setPage(1);
+	}, [query]);
 
 	return(
 		<div className="container">
-			{mangaList.map((m, index)=> <MangaCard key={index} Data={m} Ref={index + 1 == mangaList.length ? lastElemRef : null}/>)}
+			{mangaList.map((manga, index)=> <MangaCard key={index} Data={manga} Ref={(index + 1 == mangaList.length) ? lastElemRef : null}/>)}
 			{loading && <Loader/>}
 			{error && <NotFoundError/>}
 		</div>
 	)
 }
 
-class MangaCard extends react.Component{
-	constructor(props){
-		super(props);
-	}
+function MangaCard(props){
+	const {Data, Ref} = props;
 
-	render(){
-		const {Data, Ref} = this.props;
-
-		return(
-			<Link to={{pathname: `/manga/${Data.id}`, state: {fromDashboard: true}}} className="card" ref={Ref}>
-				{Data.title}
-			</Link>
-		)
-	}
+	return(
+		<Link to={{pathname: `/manga/${Data.id}`, state: {fromDashboard: true}}} className="card" ref={Ref}>
+			{Data.title}
+		</Link>
+	)
 }
 
-class CategoriesBar extends react.Component{
-	constructor(props){
-		super(props);
-	}
+function CategoriesBar(props){
+	const {Categories, AppliedCategories, ChangeAppliedCategoryList} = props;
 
-	onCategoryDelete(id){
-		let newCatList = this.props.AppliedCategories.reduce((list, cat)=> {
+	const onCategoryDelete = useCallback(event=> {
+		const id = parseInt(event.target.closest('li').id);
+		let newCatList = AppliedCategories.reduce((list, cat)=> {
 			if(cat == id){
 				return list;
 			}
 			return [...list, cat];
 		}, [])
-		this.props.OnUpdate({appliedCategories: newCatList});
-	}
+		ChangeAppliedCategoryList(newCatList);
+	}, [Categories, AppliedCategories]);
 
-	render(){
-		const {AppliedCategories, Categories} = this.props;
-
-		return(
-			<ul className="categories-list">
-				{AppliedCategories.map(id=> {
-					let category = Categories[id];
-					if(category) return <li className="category-item" key={id} onClick={()=> this.onCategoryDelete(id)}>{category.title}<div className="closing-area"/></li>;
-					return null;
-				})}
-			</ul>
-		)
-	}
+	return(
+		<ul className="categories-list">
+			{AppliedCategories.map(id=> {
+				let category = Categories[id];
+				if(!category) return null;
+				return <li className="category-item" key={id} id={id}>{category.title}<div className="closing-area" onClick={onCategoryDelete}/></li>;
+			})}
+		</ul>
+	)
 }

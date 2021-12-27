@@ -53,7 +53,7 @@ class MangaFilter(Filter):
 	categories = FilterParameter('{}__id')
 
 	def filter(self):
-		search_params = getattr(self, 'search', '').split(',')
+		search_params = getattr(self, 'search', '').split(' ')
 		qs = super().filter(self.model.objects.search(*search_params, fields=self.fields_to_search))
 		qs = qs.safe_order_by(getattr(self, 'order_by', 'title'))
 		return qs

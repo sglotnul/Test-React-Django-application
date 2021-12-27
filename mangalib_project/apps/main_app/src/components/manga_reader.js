@@ -253,7 +253,6 @@ class PageList extends react.Component{
 	}
 
 	render(){
-		console.log('page-list');
 		const {Range, Page, Chapter, Data, DisplayAsList, VisiblePages, SlideNext, SlidePrevious} = this.props;
 		const getSrc = index=> VisiblePages.includes(index) && `/media/chapters/${Data.slug}/${Chapter.number}/${index}.jpg`;
 		const getImageContainerClassName = index=> 'page-wrapper' + ((!DisplayAsList && (index !== Page)) ? ' hidden' : '');

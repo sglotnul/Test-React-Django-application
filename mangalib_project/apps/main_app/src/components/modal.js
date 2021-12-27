@@ -29,9 +29,12 @@ class Modal extends react.Component{
 	}
 
 	closeModal(){
-		if(this.state.animationStatus) return;
-		this.setState({status: false});
-		this.props.OnUpdate({modalStatus: false});
+		const callback = ()=>{
+			if(this.state.animationStatus) return;
+			this.setState({status: false});
+			this.props.CloseModal();
+		}
+		return callback;
 	}
 
 	getInner(){
@@ -40,6 +43,7 @@ class Modal extends react.Component{
 
 	render(){
 		const modalBody = this.getInner();
+		const {status, animationStatus} = this.state;
 
 		if(this.state.status && document.getElementById('modals__app')){
 			return reactDOM.createPortal(
@@ -47,7 +51,7 @@ class Modal extends react.Component{
 					className="modal" 
 					id={this.state.animationStatus && 'active'} 
 					onClick={()=> this.setState({animationStatus: false})} 
-					onTransitionEnd={this.closeModal.bind(this)}
+					onTransitionEnd={this.closeModal()}
 				>
 					{modalBody}
 				</div>,
@@ -65,13 +69,13 @@ export class FilterModal extends Modal{
 
 	getInner(){
 		const {animationStatus} = this.state;
-		const {OnUpdate, CategoryList: categories, AppliedCategoryList: appliedCategories, Order: order, OrderDir: orderDir} = this.props;
+		const {CategoryList, AppliedCategoryList, Order, OrderDir, ChangeAppliedCategoryList, ChangeOrdering, ChangeOrderingDirection,} = this.props;
 
 		return(
 			<div className="modal-body" id={animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
 				<form>
-					<CategoryCheckboxMenu CategoryList={categories} AppliedCategoryList={appliedCategories} onChange={OnUpdate}/>
-					<FilterRadioMenu TotalOrdering={order} OrderDirection={orderDir} OnChange={OnUpdate}/>
+					<CategoryCheckboxMenu CategoryList={CategoryList} AppliedCategoryList={AppliedCategoryList} OnChange={ChangeAppliedCategoryList}/>
+					<FilterRadioMenu Order={Order} OrderDirection={OrderDir} OnOrderChange={ChangeOrdering} OnOrderDirectionChange={ChangeOrderingDirection}/>
 				</form>
 			</div>
 		)
@@ -84,18 +88,53 @@ class CategoryCheckboxMenu extends react.Component{
 	}
 
 	render(){
-		let {CategoryList: categories, AppliedCategoryList: appliedCategories, onChange} = this.props;
+		let {CategoryList, AppliedCategoryList, OnChange} = this.props;
 		return(
 			<div className="filter-group">
 				<span className="filter-group-title">Категории</span>
-				{Object.entries(categories).map(([id, data])=> <FilterCheckbox Id={id} Data={data} AppliedCategories={appliedCategories} OnChange={onChange}/>)}
+				{Object.entries(CategoryList).map(([id, data])=> <CategoryCheckbox key={id} Id={id} Data={data} AppliedCategories={AppliedCategoryList} OnChange={OnChange}/>)}
+			</div>
+		)
+	}
+}
+
+class CategoryCheckbox extends react.Component{
+	constructor(props){
+		super(props);
+	}
+
+	componentDidMount(){
+		const {Data} = this.props;
+		this.setState({checked: this.props.AppliedCategories.includes(Data.id)})
+	}
+
+	onCheckboxChange(){
+		const callback = e=> {
+			const {AppliedCategories, Id, OnChange} = this.props;
+			let newCatList = AppliedCategories.reduce((list, catId)=> {
+				if(catId !== Id) return [...list, catId];
+				return list;
+			}, []);
+			if(e.target.checked) newCatList.push(Id);
+			OnChange([...new Set(newCatList)])
+		}
+		return callback;
+	}
+
+	render(){
+		const {AppliedCategories, Data, Id} = this.props;
+		return(
+			<div>
+				<input type="checkbox" name="categories" value={Id} checked={AppliedCategories.includes(Id)} onChange={this.onCheckboxChange()}/>
+				{Data.title}
 			</div>
 		)
 	}
 }
 
 class FilterRadioMenu extends react.Component{
-	fieldsToOrder = {
+	static defaultField = 'title';
+	static fieldsToOrder = {
 		title: 'Названию',
 		written_at: 'Дате выпуска',
 		created_at: 'Дате добавления',
@@ -106,22 +145,31 @@ class FilterRadioMenu extends react.Component{
 		super(props);
 	}
 
-	onRadioChange(e){
-		this.props.OnChange({order: e.target.value})
+	onRadioChange(){
+		const callback = e=> this.props.OnOrderChange(e.target.value);
+		return callback;
+	}
+
+	onOrderDirectionChange(direction){
+		const callback = ()=> this.props.OnOrderDirectionChange(direction);
+		return callback;
 	}
 
 	render(){
+		let {OrderDirection, Order} = this.props;
+		if(!Order) Order = FilterRadioMenu.defaultField;
+
 		const SortAscending = ()=> (
-			<div className="direction-filter" id={this.props.OrderDirection && "active"} onClick={()=> this.props.OnChange({orderDirection: true})}>↑</div>
+			<div className="direction-filter" id={OrderDirection && "active"} onClick={this.onOrderDirectionChange(true)}>↑</div>
 		)
 
 		const SortDescending = ()=> (
-			<div className="direction-filter" id={this.props.OrderDirection || "active"} onClick={()=> this.props.OnChange({orderDirection: false})}>↓</div>
+			<div className="direction-filter" id={OrderDirection || "active"} onClick={this.onOrderDirectionChange(false)}>↓</div>
 		)
 
-		const inputList = Object.entries(this.fieldsToOrder).map(([name, verboseName])=> {
+		const inputList = Object.entries(FilterRadioMenu.fieldsToOrder).map(([name, verboseName])=> {
 			return(<div>
-				<input type="radio" name="order_by" value={name} checked={name == this.props.TotalOrdering} onChange={this.onRadioChange.bind(this)}/>
+				<input type="radio" name="order_by" value={name} checked={name == Order} onChange={this.onRadioChange()}/>
 				{verboseName}
 			</div>)
 		})
@@ -139,34 +187,6 @@ class FilterRadioMenu extends react.Component{
 	}
 }
 
-class FilterCheckbox extends react.Component{
-	constructor(props){
-		super(props);
-	}
-
-	componentDidMount(){
-		this.setState({checked: this.props.AppliedCategories.includes(this.props.Id)})
-	}
-
-	onCheckboxChange(e){
-		let newCatList = this.props.AppliedCategories.reduce((list, cat)=> {
-			if(cat !== this.props.Id) return [...list, cat];
-			return list;
-		}, []);
-		if(e.target.checked) newCatList.push(this.props.Id);
-		this.props.OnChange({appliedCategories: [...new Set(newCatList)]})
-	}
-
-	render(){
-		return(
-			<div>
-				<input type="checkbox" name="categories" value={this.props.Id} checked={this.props.AppliedCategories.includes(this.props.Id)} onChange={this.onCheckboxChange.bind(this)}/>
-				{this.props.Data.title}
-			</div>
-		)
-	}
-}
-
 export class MangaSearchModal extends Modal{
 	constructor(props){
 		super(props);
@@ -174,7 +194,7 @@ export class MangaSearchModal extends Modal{
 
 	getInner(){
 		const {animationStatus} = this.state;
-		const {Data: manga, MoreThatOnePage: moreThatOnePage, Loading: loading, Error: error} = this.props;
+		const {Data: manga, NumberOfPages: numberOfPages, Loading: loading, Error: error} = this.props;
 
 		return(
 			<div className="search-modal-body" id={animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
