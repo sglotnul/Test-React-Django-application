@@ -7,12 +7,13 @@ import SearchPanel from './search_panel.js';
 import Loader from './loader.js';
 import NotFoundError from './not_found.js';
 import useUpdateMangaList from './hooks/useUpdateMangaList.js';
+import useObserverCallback from './hooks/useObserverCallback.js';
 
-function turnObjectElementsIntoUrlFormat({appliedCategories, order, orderDirection, search}){
+export function turnObjectElementsIntoUrlFormat({appliedCategories, order, orderDirection, search}){
 	let queryObj = {
-		categories: appliedCategories.join(','),
-		order_by: '-'.repeat(+!orderDirection) + order,
-		search: search,
+		categories: appliedCategories ? appliedCategories.join(',') : [],
+		order_by: order ? '-'.repeat(+!orderDirection) + order : '',
+		search: search.trim(),
 	};
 
 	Object.entries(queryObj).forEach(([key, value])=> {
@@ -49,7 +50,7 @@ function categoriesListUpdate(updateCategoriesFunc){
 }
 
 function setOrdering(queryString, updateOrderFunc, updateOrderDirectionFunc){
-	let order = queryString.get('order_by') || '';
+	let order = queryString.get('order_by') || 'title';
 	let dir = 1;
 	if(order.startsWith('-')){
 		order = order.slice(1);
@@ -149,22 +150,10 @@ function InfiniteScroll(props){
 	const {Query: query} = props;
 	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, query, haveUrlParamsReceived.current);
 
-	const observer = useRef();
-	const lastElemRef = useCallback(node=> {
-		disconnectObserver();
-		observer.current = new IntersectionObserver((entries, observer)=> {
-			if(entries[0].isIntersecting){
-				if(page < numberOfPages) setPage(page + 1);
-			}
-		})
-		if(node) observer.current.observe(node);
-	}, [mangaList]);
+	const lastElemRef = useObserverCallback(()=> {
+		if(page < numberOfPages) setPage(page + 1);
+	}, [page, numberOfPages]);
 
-	const disconnectObserver = ()=> {
-		if(observer.current) observer.current.disconnect();
-	}
-
-	useEffect(()=> disconnectObserver, []);
 	useEffect(()=> {
 		haveUrlParamsReceived.current = true;
 		setPage(1);

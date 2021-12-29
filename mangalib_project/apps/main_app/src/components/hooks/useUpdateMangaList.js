@@ -1,20 +1,7 @@
 import {useState, useEffect, useRef} from 'react';
 import axios from 'axios'; 
 import useStateWithCallback from './useStateWithCallback.js';
-
-function turnObjectElementsIntoUrlFormat({appliedCategories=[], order='', orderDirection=1, search}){
-	let queryObj = {
-		categories: appliedCategories.join(','),
-		order_by: '-'.repeat(+!orderDirection) + order,
-		search: search,
-	};
-
-	Object.entries(queryObj).forEach(([key, value])=> {
-		if(!value) delete queryObj[key];
-	})
-
-	return queryObj;
-}
+import {turnObjectElementsIntoUrlFormat} from '../catalog.js'
 
 export default function useUpdateMangaList(page, queryObj, permission=true){
 	const [mangaList, setMangaList] = useStateWithCallback([]);

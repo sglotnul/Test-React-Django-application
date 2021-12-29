@@ -1,4 +1,4 @@
-import react, {Fragment, useMemo} from 'react';
+import react, {Fragment, useState, useEffect, useRef} from 'react';
 import {Link} from 'react-router-dom';
 import createBrowserHistory from 'history/createBrowserHistory';
 import axios from 'axios'; 
@@ -42,7 +42,7 @@ class Range{
 	}
 }
 
-class MangaReader extends react.Component{
+export default class MangaReader extends react.Component{
 	#_prevScroll = document.documentElement.clientHeight + 1;
 
 	constructor(props){
@@ -136,7 +136,7 @@ class MangaReader extends react.Component{
 	}
 
 	getChapterData(){
-		window.scrollTo(0 ,0);
+		window.scrollTo(0, 0);
 		if(this.props.Data.id === undefined) return;
 		this.setState({error: false});
 		this.setState({loading: true});
@@ -294,5 +294,3 @@ class ReaderMenu extends react.Component{
 		)
 	}
 }
-
-export default MangaReader;

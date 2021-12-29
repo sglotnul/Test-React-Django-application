@@ -1,10 +1,29 @@
 import os, uuid, shutil
-from functools import reduce 
+from functools import reduce
 from django.db import models
 from django.db.models import Q
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, FieldError
 from user_app.models import CustomUser
+
+def distance(a, b):
+    "Calculates the Levenshtein distance between a and b."
+    n, m = len(a), len(b)
+    if n > m:
+        # Make sure n <= m, to use O(min(n, m)) space
+        a, b = b, a
+        n, m = m, n
+
+    current_row = range(n + 1)  # Keep current and previous row, not entire matrix
+    for i in range(1, m + 1):
+        previous_row, current_row = current_row, [i] + [0] * n
+        for j in range(1, n + 1):
+            add, delete, change = previous_row[j] + 1, current_row[j - 1] + 1, previous_row[j - 1]
+            if a[j - 1] != b[i - 1]:
+                change += 1
+            current_row[j] = min(add, delete, change)
+
+    return current_row[n]
 
 def images_directory_path(instance, filename):
 	return os.path.join("previews", str(instance.slug), str(uuid.uuid4().hex + ".jpg"))
@@ -49,7 +68,8 @@ class DefaultManager(models.Manager):
 		filter_arg = Q()
 		for string in strings:
 			filter_arg = filter_arg | reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields_to_search, Q())
-		return self.get_queryset().filter(filter_arg)
+		qs = self.get_queryset().filter(filter_arg)
+		return qs
 
 class Category(models.Model):
 	title = models.CharField(max_length = 200)
