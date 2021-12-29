@@ -78,6 +78,13 @@ function getParamsFromUrl(setCategoryList, setOrder, setOrderDirection, setSearc
 	setSearchString(qs, setSearch);
 }
 
+function getCallback(func1, func2){
+	return function(state){
+		func1(state);
+		func2(1);
+	}
+}
+
 export default function Catalog(props){
 	const [page, setPage] = useState(1);
 	const [categories, setCategories] = useState({});
@@ -86,6 +93,8 @@ export default function Catalog(props){
 	const [orderDirection, setOrderDirection] = useState(1);
 	const [search, setSearch] = useState('');
 	const [modalStatus, setModalStatus] = useState(false);
+
+	const haveUrlParamsReceived = useRef(false);
 
 	const history = useHistory();
 
@@ -98,7 +107,7 @@ export default function Catalog(props){
 		}
 	}, [appliedCategories, order, orderDirection, search])
 
-	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, queryObject);
+	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, queryObject, haveUrlParamsReceived.current);
 
 	const lastElemRef = useObserverCallback(node=> {
 		if(page < numberOfPages) setPage(page + 1);
@@ -107,6 +116,11 @@ export default function Catalog(props){
 	const showModal = useCallback(()=> setModalStatus(true), []);
 	const closeModal = useCallback(()=> setModalStatus(false), []);
 
+	const changeAppliedCategories = useCallback(getCallback(setAppliedCategories, setPage), []);
+	const changeOrder = useCallback(getCallback(setOrder, setPage), []);
+	const changeOrderDirection = useCallback(getCallback(setOrderDirection, setPage), []);
+	const changeSearch = useCallback(getCallback(setSearch, setPage), []);
+
 	const chageState = (callback, ...state)=> {
 		return function(){
 			callback(...state);
@@ -114,6 +128,7 @@ export default function Catalog(props){
 	}
 
 	useEffect(()=> {
+		haveUrlParamsReceived.current = true;
 		categoriesListUpdate(setCategories);
 		getParamsFromUrl(setAppliedCategories, setOrder, setOrderDirection, setSearch);
 	}, []);
@@ -122,13 +137,13 @@ export default function Catalog(props){
 
 	return(
 		<>
-			<SearchPanel Search={search} OnSearch={setSearch}/>
+			<SearchPanel Search={search} OnSearch={changeSearch}/>
 			<Navbar>
 				<div className="modal-open-arrow" onClick={showModal}/>
 			</Navbar>
 			<div className="content">
 				<div className="default-page">
-					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} ChangeAppliedCategoryList={setAppliedCategories}/>
+					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} ChangeAppliedCategoryList={changeAppliedCategories}/>
 					<div className="container">
 						{mangaList.map((manga, index)=> <MangaCard key={index} Data={manga} Ref={(index + 1 == mangaList.length) ? lastElemRef : null}/>)}
 						{loading && <Loader/>}
@@ -141,10 +156,9 @@ export default function Catalog(props){
 						Order={order} 
 						OrderDir={orderDirection}
 						CloseModal={closeModal}
-						ChangeAppliedCategoryList={setAppliedCategories}
-						ChangeOrdering={setOrder}
-						ChangeOrderingDirection={setOrderDirection}
-						ChangePage={setPage}
+						ChangeAppliedCategoryList={changeAppliedCategories}
+						ChangeOrdering={changeOrder}
+						ChangeOrderingDirection={changeOrderDirection}
 					/>
 				</div>
 	        </div>

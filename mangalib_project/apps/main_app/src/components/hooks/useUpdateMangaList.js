@@ -8,6 +8,7 @@ export default function useUpdateMangaList(page, queryObj, permission=true){
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
 
+	useEffect(()=> setMangaList([]), [queryObj])
 	useEffect(()=> {
 		if(!permission) return;
 		let cancel;

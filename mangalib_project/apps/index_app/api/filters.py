@@ -58,7 +58,7 @@ class MangaFilter(Filter):
 		qs = qs.safe_order_by(getattr(self, 'order_by', 'title'))
 		return qs
 
-	def get_page(self, paginator):
+	def get_page(self, qs, paginator):
 		if not hasattr(self, 'page'):
-			return paginator.queryset
+			return qs
 		return paginator.get_page(int(self.page))

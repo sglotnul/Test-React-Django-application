@@ -69,28 +69,13 @@ export class FilterModal extends Modal{
 
 	getInner(){
 		const {animationStatus} = this.state;
-		const {CategoryList, AppliedCategoryList, Order, OrderDir, ChangeAppliedCategoryList, ChangeOrdering, ChangeOrderingDirection, ChangePage} = this.props;
-
-		const ChangeAppliedCategoryListCallback = state=> {
-			ChangePage(1);
-			ChangeAppliedCategoryList(state);
-		};
-
-		const ChangeOrderingCallback = state=> {
-			ChangePage(1);
-			ChangeOrdering(state);
-		};
-
-		const ChangeOrderingDirectionCallback = state=> {
-			ChangePage(1);
-			ChangeOrderingDirection(state);
-		};
+		const {CategoryList, AppliedCategoryList, Order, OrderDir, ChangeAppliedCategoryList, ChangeOrdering, ChangeOrderingDirection} = this.props;
 
 		return(
 			<div className="modal-body" id={animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
 				<form>
-					<CategoryCheckboxMenu CategoryList={CategoryList} AppliedCategoryList={AppliedCategoryList} OnChange={ChangeAppliedCategoryListCallback}/>
-					<FilterRadioMenu Order={Order} OrderDirection={OrderDir} OnOrderChange={ChangeOrderingCallback} OnOrderDirectionChange={ChangeOrderingDirectionCallback}/>
+					<CategoryCheckboxMenu CategoryList={CategoryList} AppliedCategoryList={AppliedCategoryList} OnChange={ChangeAppliedCategoryList}/>
+					<FilterRadioMenu Order={Order} OrderDirection={OrderDir} OnOrderChange={ChangeOrdering} OnOrderDirectionChange={ChangeOrderingDirection}/>
 				</form>
 			</div>
 		)

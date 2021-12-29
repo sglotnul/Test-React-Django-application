@@ -8,12 +8,13 @@ import time
 
 class mangaAPI(View):
 	def get(self, request, pk = None):
+		time.sleep(1)
 		if pk is None:
 			filters = MangaFilter(request.GET)	
 			qs = filters.filter()
 			paginator = Paginator(qs)
-			qs = filters.get_page(paginator)
-			return JsonResponse({'result' : True, 'number_of_coincidences' : len(qs), 'number_of_pages' : len(paginator.paginated_queryset), 'data' : MangaSerializer(qs, many = True).data})
+			qs = filters.get_page(qs, paginator)
+			return JsonResponse({'result' : True, 'number_of_coincidences' : len(qs), 'number_of_pages' : paginator.number_of_pages, 'data' : MangaSerializer(qs, many = True).data})
 		object = Manga.objects.safe_get(pk=pk)
 		if object:
 			return JsonResponse({'result' : True, 'data' : MangaSerializer(object).data})
