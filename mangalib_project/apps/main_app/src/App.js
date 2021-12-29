@@ -1,16 +1,15 @@
 import './style.css';
 import './loader.svg';
-import react, {Fragment, useEffect} from 'react';
+import {Fragment, useEffect} from 'react';
 import Navbar from './components/navbar.js';
 import Footer from './components/footer.js';
 import Catalog from './components/catalog.js';
 import Manga from './components/manga.js';
-import {BrowserRouter as Router, Switch, Route, Link} from 'react-router-dom';
-import createHistory from 'history/createBrowserHistory';
-
-const history = createHistory();
+import {BrowserRouter as Router, Switch, Route, Link, useHistory} from 'react-router-dom';
 
 export default function App(props){
+	const history = useHistory();
+
 	useEffect(()=> {
 		Object.defineProperty(Symbol.prototype, "value", {
 			get(){
@@ -20,7 +19,7 @@ export default function App(props){
 	}, []);
 
 	return(
-		<Router history={history}>
+		<Router>
 			<Switch>
 				<Route path="/manga/:id" component={Manga}/>
 				<Route path="/mangalist" exect component={Catalog}/>

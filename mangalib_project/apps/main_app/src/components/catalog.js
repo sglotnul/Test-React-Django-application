@@ -7,7 +7,7 @@ import SearchPanel from './search_panel.js';
 import Loader from './loader.js';
 import NotFoundError from './not_found.js';
 import useUpdateMangaList from './hooks/useUpdateMangaList.js';
-import useObserverCallback from './hooks/useObserverCallback.js';
+import useObserverCallback from './hooks/useObserverCallback.js'
 
 export function turnObjectElementsIntoUrlFormat({appliedCategories, order, orderDirection, search}){
 	let queryObj = {
@@ -79,6 +79,7 @@ function getParamsFromUrl(setCategoryList, setOrder, setOrderDirection, setSearc
 }
 
 export default function Catalog(props){
+	const [page, setPage] = useState(1);
 	const [categories, setCategories] = useState({});
 	const [appliedCategories, setAppliedCategories] = useState([]);
 	const [order, setOrder] = useState('');
@@ -87,15 +88,6 @@ export default function Catalog(props){
 	const [modalStatus, setModalStatus] = useState(false);
 
 	const history = useHistory();
-
-	const showModal = useCallback(()=> setModalStatus(true), []);
-	const closeModal = useCallback(()=> setModalStatus(false), []);
-
-	const chageState = (callback, ...state)=> {
-		return function(){
-			callback(...state);
-		}
-	}
 
 	const queryObject = useMemo(()=> {
 		return {
@@ -106,12 +98,27 @@ export default function Catalog(props){
 		}
 	}, [appliedCategories, order, orderDirection, search])
 
+	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, queryObject);
+
+	const lastElemRef = useObserverCallback(node=> {
+		if(page < numberOfPages) setPage(page + 1);
+	}, [mangaList]);
+
+	const showModal = useCallback(()=> setModalStatus(true), []);
+	const closeModal = useCallback(()=> setModalStatus(false), []);
+
+	const chageState = (callback, ...state)=> {
+		return function(){
+			callback(...state);
+		}
+	}
+
 	useEffect(()=> {
 		categoriesListUpdate(setCategories);
 		getParamsFromUrl(setAppliedCategories, setOrder, setOrderDirection, setSearch);
 	}, []);
 
-	useEffect(()=> updateQueryString(history, queryObject), [queryObject])
+	useEffect(()=> updateQueryString(history, queryObject), [queryObject]);
 
 	return(
 		<>
@@ -122,9 +129,11 @@ export default function Catalog(props){
 			<div className="content">
 				<div className="default-page">
 					<CategoriesBar Categories={categories} AppliedCategories={appliedCategories} ChangeAppliedCategoryList={setAppliedCategories}/>
-					<InfiniteScroll 
-						Query={queryObject}
-					/>
+					<div className="container">
+						{mangaList.map((manga, index)=> <MangaCard key={index} Data={manga} Ref={(index + 1 == mangaList.length) ? lastElemRef : null}/>)}
+						{loading && <Loader/>}
+						{error && <NotFoundError/>}
+					</div>
 					<FilterModal 
 						Status={modalStatus}
 						CategoryList={categories} 
@@ -135,36 +144,11 @@ export default function Catalog(props){
 						ChangeAppliedCategoryList={setAppliedCategories}
 						ChangeOrdering={setOrder}
 						ChangeOrderingDirection={setOrderDirection}
+						ChangePage={setPage}
 					/>
 				</div>
 	        </div>
         </>
-	)
-}
-
-function InfiniteScroll(props){
-	const [page, setPage] = useState(1);
-
-	const haveUrlParamsReceived = useRef(false);
-	
-	const {Query: query} = props;
-	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, query, haveUrlParamsReceived.current);
-
-	const lastElemRef = useObserverCallback(()=> {
-		if(page < numberOfPages) setPage(page + 1);
-	}, [page, numberOfPages]);
-
-	useEffect(()=> {
-		haveUrlParamsReceived.current = true;
-		setPage(1);
-	}, [query]);
-
-	return(
-		<div className="container">
-			{mangaList.map((manga, index)=> <MangaCard key={index} Data={manga} Ref={(index + 1 == mangaList.length) ? lastElemRef : null}/>)}
-			{loading && <Loader/>}
-			{error && <NotFoundError/>}
-		</div>
 	)
 }
 

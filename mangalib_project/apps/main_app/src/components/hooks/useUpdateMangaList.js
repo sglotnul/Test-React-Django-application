@@ -1,18 +1,16 @@
 import {useState, useEffect, useRef} from 'react';
 import axios from 'axios'; 
-import useStateWithCallback from './useStateWithCallback.js';
 import {turnObjectElementsIntoUrlFormat} from '../catalog.js'
 
 export default function useUpdateMangaList(page, queryObj, permission=true){
-	const [mangaList, setMangaList] = useStateWithCallback([]);
+	const [mangaList, setMangaList] = useState([]);
 	const [numberOfPages, setNumberOfPages] = useState(0);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
-	const cancelPrevRequest = useRef();
 
-	const updateMangaList = (page=1)=> {
+	useEffect(()=> {
 		if(!permission) return;
-		if(cancelPrevRequest.current) cancelPrevRequest.current();
+		let cancel;
 		const queryParams = turnObjectElementsIntoUrlFormat(queryObj);
 		setLoading(true);
 		setError(false);
@@ -20,7 +18,7 @@ export default function useUpdateMangaList(page, queryObj, permission=true){
 			method: 'GET',
 		    url: '/api/manga/',
 		    params: Object.assign(queryParams, {page}),
-		    cancelToken: new axios.CancelToken(c=> cancelPrevRequest.current = c),
+		    cancelToken: new axios.CancelToken(c=> cancel = c),
 		}).then(res=> {
 			let {data: manga, number_of_pages} = res.data;
 	    	if(!number_of_pages) throw new Error('not found');
@@ -32,13 +30,9 @@ export default function useUpdateMangaList(page, queryObj, permission=true){
 			setError(true);
 			setLoading(false);
 		})
-	}
 
-	useEffect(()=> setMangaList([], updateMangaList), [queryObj]);
-	useEffect(()=> {
-		if(page === 1) return;
-		updateMangaList(page);
-	}, [page]);
+		return cancel;
+	}, [queryObj, page]);
 
 	return {mangaList, numberOfPages, loading, error};
 }

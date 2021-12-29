@@ -5,29 +5,29 @@ import useUpdateMangaList from './hooks/useUpdateMangaList.js';
 import useQueryUpdate from './hooks/useQueryUpdate.js';
 
 export default function SearchPanel(props){
-	const [query, setQuery] = useState('');
+	const [input, setInput] = useState('');
 	const [modalStatus, setModalStatus] = useState(false);
 	const [loadingMask, setLoadingMask] = useState(false);
 	const [errorMask, setErrorMask] = useState(false);
 
-	const {completedQuery} = useQueryUpdate(query);
+	const {query} = useQueryUpdate(input);
 
 	const queryObject = useMemo(()=> {
 		return {
-			search: completedQuery,
+			search: query,
 		}
-	}, [completedQuery]);
+	}, [query]);
 	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(1, queryObject, modalStatus);
 
 	useEffect(()=> {
 		setModalStatus(false);
-		setQuery(props.Search);
+		setInput(props.Search);
 	}, [props.Search]);
 
 	useEffect(()=> {
 		setLoadingMask(true);
 		setErrorMask(false);
-	}, [query]);
+	}, [input]);
 	useEffect(()=> {
 		setLoadingMask(loading);
 		setErrorMask(error);
@@ -35,13 +35,13 @@ export default function SearchPanel(props){
 
 	const closeModal = useCallback(()=> setModalStatus(false), []);
 	const onInputChange = useCallback(e=> {
-		setQuery(e.target.value);
+		setInput(e.target.value);
 		setModalStatus(!!e.target.value);
 	}, []);
 	const onSubmit = useCallback(e=> {
 		e.preventDefault();
-		props.OnSearch(query);
-	}, [query]);
+		props.OnSearch(input);
+	}, [input]);
 
 	return(
 		<div className="search-panel" id={modalStatus && "active"}>
@@ -54,7 +54,7 @@ export default function SearchPanel(props){
 				CloseModal={closeModal}
 			/>
 			<form onSubmit={onSubmit}>
-				<input type="text" value={query} onChange={onInputChange}/>
+				<input type="text" value={input} onChange={onInputChange}/>
 				<button type="submit">Поиск</button>
 			</form>
 		</div>
