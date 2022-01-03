@@ -10,14 +10,14 @@ export default function SearchPanel(props){
 	const [loadingMask, setLoadingMask] = useState(false);
 	const [errorMask, setErrorMask] = useState(false);
 
-	const {query} = useQueryUpdate(input);
+	const query = useQueryUpdate(input);
 
 	const queryObject = useMemo(()=> {
 		return {
 			search: query,
 		}
 	}, [query]);
-	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(1, queryObject, modalStatus);
+	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(1, queryObject, modalStatus)
 
 	useEffect(()=> {
 		setModalStatus(false);
@@ -35,9 +35,10 @@ export default function SearchPanel(props){
 
 	const closeModal = useCallback(()=> setModalStatus(false), []);
 	const onInputChange = useCallback(e=> {
-		setInput(e.target.value);
-		setModalStatus(!!e.target.value);
-	}, []);
+		const {value} = e.target;
+		setInput(value);
+		setModalStatus(!!value && value !== props.Search);
+	}, [props.Search]);
 	const onSubmit = useCallback(e=> {
 		e.preventDefault();
 		props.OnSearch(input);

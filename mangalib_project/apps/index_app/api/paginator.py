@@ -10,26 +10,20 @@ class Paginator():
 	def __iter__(self):
 		return (page for page in self.paginated_queryset)
 
-	def get_number_of_pages(self, qs = None, objects_on_page = None):
-		queryset = qs or self.queryset
-		split_by = objects_on_page or self.OBJECTS_ON_PAGE
-		return math.ceil(len(queryset) / split_by)
+	def get_number_of_pages(self):
+		return math.ceil(len(self.queryset) / self.OBJECTS_ON_PAGE)
 
-	def get_paginated_queryset(self, queryset = None, objects_on_page = None):
-		queryset = qs or self.queryset
-		split_by = objects_on_page or self.OBJECTS_ON_PAGE
+	def get_paginated_queryset(self):
 		paginated_queryset = []
 		page = []
-		for obj_index in range(len(queryset)):
-			page.append(queryset[obj_index])
-			if (len(page) >= split_by) or (obj_index == len(queryset) - 1):
+		for obj_index in range(len(self.queryset)):
+			page.append(self.queryset[obj_index])
+			if (len(page) >= self.OBJECTS_ON_PAGE) or (obj_index == len(self.queryset) - 1):
 				paginated_queryset = [*paginated_queryset, page]
 				page = []
 		return paginated_queryset
 
-	def get_page(self, page, qs = None, objects_on_page = None):
-		queryset = qs or self.queryset
-		split_by = objects_on_page or self.OBJECTS_ON_PAGE
-		lower_bound = (page - 1) * split_by
-		upper_bound = min(page * split_by, len(queryset))
-		return queryset[lower_bound:upper_bound]
+	def get_page(self, page):
+		lower_bound = (page - 1) * self.OBJECTS_ON_PAGE
+		upper_bound = min(page * self.OBJECTS_ON_PAGE, len(self.queryset))
+		return self.queryset[lower_bound:upper_bound]

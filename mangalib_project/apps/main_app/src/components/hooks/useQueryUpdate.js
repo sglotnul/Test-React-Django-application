@@ -15,5 +15,5 @@ export default function useQueryUpdate(query){
 		return cancel;
 	}, [query])
 
-	return {completedQuery};
+	return completedQuery;
 }

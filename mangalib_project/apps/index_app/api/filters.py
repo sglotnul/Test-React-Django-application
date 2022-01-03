@@ -5,24 +5,15 @@ class FilterParameter():
 	def __init__(self, template = '{}'):
 		self.template = template
 	def __set__(self, instance, value):
-		setattr(instance.cleaned_data, self.name, value.split(','))
+		instance.templated_filters[self.name] = value.split(',')
 	def __get__(self, instance, owner):
-		getattr(instance.cleaned_data, self.name)
+		return instance.templated_filters[self.name]
 	def __set_name__(self, owner, name):
 		self.name = self.template.format(name)
 
-#it could be a simple dict inside a Filter class, but i am practicing in oop, so this an object
-class CleanedData():
-	def __setattr__(self, name, value):
-		self.__dict__[str(name)] = value
-	def __iter__(self):
-		for f in dir(self):
-			if not f.startswith('__'):
-				yield [f, getattr(self, f)]
-
 class Filter():
 	def __init__(self, fields_list):
-		self.cleaned_data = CleanedData()
+		self.templated_filters = {}
 		for field in fields_list:
 			value = fields_list.get(field)
 			if value:
@@ -35,7 +26,7 @@ class Filter():
 		qs = queryset
 		if qs is None: 
 			qs = model.objects.all()
-		for param, value in self.cleaned_data:
+		for param, value in self.templated_filters.items():
 			qs = qs.include_or_exclude_filter(param, value)
 		return qs
 
