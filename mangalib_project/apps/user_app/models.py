@@ -11,9 +11,9 @@ class CustomUser(AbstractUser):
 	def save(self, *args, **kwargs):
 		IMAGE_ROOT = os.path.join(settings.MEDIA_ROOT, 'profile_images')
 		if not(self.pk is None):
-			username = self.__class__.objects.get(pk = self.pk).username
-			if username != self.username:
-				os.rename(os.path.join(IMAGE_ROOT, username), os.path.join(IMAGE_ROOT, self.username))
+			previous_username = self.__class__.objects.get(pk = self.pk).username
+			if previous_username != self.username:
+				os.rename(os.path.join(IMAGE_ROOT, previous_username), os.path.join(IMAGE_ROOT, self.username))
 		super(CustomUser, self).save(*args, **kwargs)
 	def delete(self, *args, **kwargs):
 		root = os.path.join(settings.MEDIA_ROOT, 'profile_images',self.username)

@@ -1,24 +1,24 @@
 import {useState, useEffect} from 'react';
 import axios from 'axios'; 
 
-export default function useUpdateChapterData(number, data){
-	const [chapterData, setChapterData] = useState({});
+export default function useUpdateData(path, states, permission=true){
+	const [responseData, setResponseData] = useState({});
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
 
 	useEffect(()=> {
-		if(!data.id) return;
+		if(!permission) return;
 		let cancel;
 		setLoading(true);
 		setError(false);
 		axios({
 			method: 'GET',
-	    	url: `/api/manga/${data.id}/chapter/${number}`,
+	    	url: path,
 		    cancelToken: new axios.CancelToken(c=> cancel = c),
 		}).then(res=> {
-			let {data} = res.data;
-	    	if(!data.number_of_pages) throw new Error('not found');
-	    	setChapterData(data);
+			let {data, result} = res.data;
+	    	if(!result) throw new Error('not found');
+	    	setResponseData(data);
 	    	setLoading(false);
 		}).catch(e=> {
 			if(axios.isCancel(e)) return;
@@ -27,7 +27,7 @@ export default function useUpdateChapterData(number, data){
 		})
 
 		return cancel
-	}, [number, data]);
+	}, [...states]);
 
-	return {chapterData, loading, error};
+	return {responseData, loading, error};
 }

@@ -1,8 +1,8 @@
 import axios from 'axios'; 
-import react, {Fragment, useState, useEffect, useRef, useCallback} from 'react';
+import react, {Fragment, useState, useEffect, useRef, useCallbackm} from 'react';
 import reactDOM from 'react-dom';
-import Loader from './loader.js';
-import NotFoundError from './not_found.js';
+import Loader from './loader.jsx';
+import NotFoundError from './not_found.jsx';
 
 class Modal extends react.Component{
 	constructor(props){
@@ -204,4 +204,27 @@ export class MangaSearchModal extends Modal{
 			</div>
 		)
 	}
+}
+
+export class ProfileModal extends Modal{
+	constructor(props){
+		super(props);
+	}
+
+	getInner(){
+		const {UserData} = this.props;
+		const {animationStatus} = this.state;
+
+		return(
+			<div className="search-modal-body" id={animationStatus && 'active'} onClick={e=> e.stopPropagation()} onTransitionEnd={e=> e.stopPropagation()}>
+				<ProfileModalInner {...this.props}/>
+			</div>
+		)
+	}
+}
+
+function ProfileModalInner(props){
+	const {UserData: {username}} = props;
+
+	return <span>{username || "войти"}</span>
 }

@@ -1,8 +1,8 @@
 import react,{Fragment, useState, useEffect, useCallback, useMemo} from 'react';
 import axios from 'axios'; 
-import {MangaSearchModal} from './modal.js';
-import useUpdateMangaList from './hooks/useUpdateMangaList.js';
-import useQueryUpdate from './hooks/useQueryUpdate.js';
+import {MangaSearchModal} from './modal.jsx';
+import useUpdateMangaList from './hooks/useUpdateMangaList.jsx';
+import useQueryUpdate from './hooks/useQueryUpdate.jsx';
 
 export default function SearchPanel(props){
 	const [input, setInput] = useState('');
@@ -17,7 +17,7 @@ export default function SearchPanel(props){
 			search: query,
 		}
 	}, [query]);
-	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(1, queryObject, modalStatus)
+	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(1, queryObject, modalStatus && query !== '')
 
 	useEffect(()=> {
 		setModalStatus(false);

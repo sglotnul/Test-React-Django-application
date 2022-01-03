@@ -1,10 +1,10 @@
 import {Fragment, useState, useEffect} from 'react';
 import {Route, Switch, Link} from 'react-router-dom';
 import axios from 'axios'; 
-import Navbar from './navbar.js';
-import MangaReader from './manga_reader.js';
-import Loader from './loader.js';
-import NotFoundError from './not_found.js';
+import Navbar from './navbar.jsx';
+import MangaReader from './manga_reader.jsx';
+import Loader from './loader.jsx';
+import NotFoundError from './not_found.jsx';
 
 export default function Manga(props){
 	const id = props.match.params.id;

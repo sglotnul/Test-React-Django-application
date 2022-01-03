@@ -4,6 +4,7 @@ export default function useQueryUpdate(query){
 	const [completedQuery, setComplitedQuery] = useState('');
 
 	useEffect(()=> {
+		setComplitedQuery('');
 		let willCancel = false;
 		let cancel = ()=> willCancel = true;
 		if(query){
@@ -13,7 +14,7 @@ export default function useQueryUpdate(query){
 			}, 600);
 		}
 		return cancel;
-	}, [query])
+	}, [query]);
 
 	return completedQuery;
 }

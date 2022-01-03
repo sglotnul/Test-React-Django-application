@@ -1,13 +1,13 @@
 import react, {Fragment, useState, useEffect, useCallback, useMemo, useRef} from 'react';
-import {Link, useHistory} from 'react-router-dom';
+import {Link, useHistory, useLocation} from 'react-router-dom';
 import axios from 'axios'; 
-import {FilterModal} from './modal.js';
+import {FilterModal} from './modal.jsx';
 import Navbar from './navbar';
-import SearchPanel from './search_panel.js';
-import Loader from './loader.js';
-import NotFoundError from './not_found.js';
-import useUpdateMangaList from './hooks/useUpdateMangaList.js';
-import useObserverCallback from './hooks/useObserverCallback.js'
+import SearchPanel from './search_panel.jsx';
+import Loader from './loader.jsx';
+import NotFoundError from './not_found.jsx';
+import useUpdateMangaList from './hooks/useUpdateMangaList.jsx';
+import useObserverCallback from './hooks/useObserverCallback.jsx';
 
 export function turnObjectElementsIntoUrlFormat({appliedCategories, order, orderDirection, search}){
 	let queryObj = {
@@ -23,18 +23,13 @@ export function turnObjectElementsIntoUrlFormat({appliedCategories, order, order
 	return queryObj;
 }
 
-function getQueryString(...params){
-	let queryObj = turnObjectElementsIntoUrlFormat(...params);
-	let searchParams = new URLSearchParams('');
-	for(let [key, value] of  Object.entries(queryObj)){
-		if(value) searchParams.set(key, value);
-	}
-	return searchParams.toString()
-}
-
 function updateQueryString(history, queryObj){
-	const queryString = getQueryString(queryObj);
-	history.replace(window.location.pathname + '?'.repeat(+!!queryString) + queryString);
+	const location = useLocation;
+	const searchParams = new URLSearchParams(turnObjectElementsIntoUrlFormat(queryObj));
+	history.replace({
+		pathname: location.pathname,
+		search: searchParams.toString(),
+	});
 }
 
 function categoriesListUpdate(updateCategoriesFunc){
@@ -86,15 +81,13 @@ function getCallback(func1, func2){
 }
 
 export default function Catalog(props){
-	const [page, setPage] = useState(1);
+	const [page, setPage] = useState(0);
 	const [categories, setCategories] = useState({});
 	const [appliedCategories, setAppliedCategories] = useState([]);
 	const [order, setOrder] = useState('');
 	const [orderDirection, setOrderDirection] = useState(1);
 	const [search, setSearch] = useState('');
 	const [modalStatus, setModalStatus] = useState(false);
-
-	const haveUrlParamsReceived = useRef(false);
 
 	const history = useHistory();
 
@@ -107,11 +100,12 @@ export default function Catalog(props){
 		}
 	}, [appliedCategories, order, orderDirection, search])
 
-	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, queryObject, haveUrlParamsReceived.current);
+	const {mangaList, numberOfPages, loading, error} = useUpdateMangaList(page, queryObject, !!page);
 
-	const lastElemRef = useObserverCallback(node=> {
+	const updatePageNumber = useCallback(()=> {
 		if(page < numberOfPages) setPage(page + 1);
-	}, [mangaList]);
+	}, [mangaList])
+	const lastElemRef = useObserverCallback(updatePageNumber);
 
 	const showModal = useCallback(()=> setModalStatus(true), []);
 	const closeModal = useCallback(()=> setModalStatus(false), []);
@@ -128,7 +122,7 @@ export default function Catalog(props){
 	}
 
 	useEffect(()=> {
-		haveUrlParamsReceived.current = true;
+		setPage(1);
 		categoriesListUpdate(setCategories);
 		getParamsFromUrl(setAppliedCategories, setOrder, setOrderDirection, setSearch);
 	}, []);
@@ -137,8 +131,8 @@ export default function Catalog(props){
 
 	return(
 		<>
-			<SearchPanel Search={search} OnSearch={changeSearch}/>
 			<Navbar>
+				<SearchPanel Search={search} OnSearch={changeSearch}/>
 				<div className="modal-open-arrow" onClick={showModal}/>
 			</Navbar>
 			<div className="content">
@@ -170,7 +164,7 @@ function MangaCard(props){
 	const {Data, Ref} = props;
 
 	return(
-		<Link to={{pathname: `/manga/${Data.id}`, state: {fromDashboard: true}}} className="card" ref={Ref}>
+		<Link to={{pathname: `/manga/${Data.id}`, state: {fromDashboard: true}}} className="card" ref={Ref} id={Data.id}>
 			{Data.title}
 		</Link>
 	)

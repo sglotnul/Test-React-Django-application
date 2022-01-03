@@ -1,6 +1,6 @@
 import {useState, useEffect, useRef} from 'react';
 import axios from 'axios'; 
-import {turnObjectElementsIntoUrlFormat} from '../catalog.js'
+import {turnObjectElementsIntoUrlFormat} from '../catalog.jsx';
 
 export default function useUpdateMangaList(page, queryObj, permission=true){
 	const [mangaList, setMangaList] = useState([]);
@@ -8,7 +8,7 @@ export default function useUpdateMangaList(page, queryObj, permission=true){
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState(false);
 
-	useEffect(()=> setMangaList([]), [queryObj])
+	useEffect(()=> setMangaList([]), [queryObj]);
 	useEffect(()=> {
 		if(!permission) return;
 		let cancel;
@@ -31,7 +31,6 @@ export default function useUpdateMangaList(page, queryObj, permission=true){
 			setError(true);
 			setLoading(false);
 		})
-
 		return cancel;
 	}, [queryObj, page]);
 
