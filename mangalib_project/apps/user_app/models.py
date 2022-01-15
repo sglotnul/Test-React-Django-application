@@ -2,12 +2,17 @@ import os, uuid, shutil
 from django.db import models
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.conf import settings
+from index_app.models import DefaultManager
 
 def profile_images_directory_path(instance, filename):
     return os.path.join("profile_images", str(instance.username), str(uuid.uuid4().hex + ".jpg"))
 
+class UserManager(UserManager, DefaultManager):
+	pass
+
 class CustomUser(AbstractUser):
 	profile_image = models.ImageField(upload_to = profile_images_directory_path, verbose_name = 'Изображение профиля', blank = True, null = True)
+	objects = UserManager()
 	def save(self, *args, **kwargs):
 		IMAGE_ROOT = os.path.join(settings.MEDIA_ROOT, 'profile_images')
 		if not(self.pk is None):

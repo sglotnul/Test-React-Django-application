@@ -5,16 +5,6 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 import {BrowserRouter as Router} from 'react-router-dom';
 
-(function main(){
-  function test(){
-    let x = false;
-    setTimeout(()=> x = true, 1500);
-    return x;
-  }
-
-  console.log(test());
-}());
-
 ReactDOM.render(
   <Router>
     <React.StrictMode>

@@ -42,6 +42,10 @@ class Range{
 	}
 }
 
+function getNumericParam(name, queryObj){
+	return +queryObj.get(name) || 1;
+}
+
 function scrollToTotalPage(page){
 	const elem = document.getElementById(page);
 	if(elem) document.getElementById(page).scrollIntoView(true);
@@ -61,37 +65,39 @@ function hideNavbarForcibly(ref, callback){
 }
 
 function getTotalPage(page, number_of_pages, func){
+	let totalPage = page;
 	let cancel;
 	return function(){
 		if(cancel) cancel();
 		let canceled = false;
 		cancel = ()=> canceled = true;
 		setTimeout(()=> {
-			let totalPageElem = document.getElementById(page);
-			if(!totalPageElem || canceled) return;
+			let nextPage = totalPage;
+			let totalPageElem = document.getElementById(nextPage);
+			if(!totalPageElem || canceled || !number_of_pages) return;
 			let totalPageElemTopCoords = totalPageElem.getBoundingClientRect().top;
-			let nextPage = page;
 			if(totalPageElemTopCoords > 0){
 				while(nextPage > 1){
 					let e = document.getElementById(nextPage - 1);
 					if(!e) break;
 					let margin = e.getBoundingClientRect().top;
-					if(margin >= 0){
+					if(margin > 0){
 						nextPage--;
 					} else break;
 				}
-			} else{
+			} else if(totalPageElemTopCoords < 0){
 				while(nextPage < number_of_pages){
 					let e = document.getElementById(nextPage + 1);
 					if(!e) break;
 					let margin = e.getBoundingClientRect().top;
-					if(margin <= document.documentElement.clientHeight){
+					if(margin < document.documentElement.clientHeight){
 						nextPage++;
 					} else break;
 				}
 			}
+			totalPage = nextPage
 			func(nextPage);
-		}, 400)
+		}, 200);
 	}
 }
 
@@ -128,7 +134,6 @@ export default function MangaReader(props){
 	}, [observePage]);
 
 	const slideNext = useCallback(()=> {
-		hideNavbarForcibly(prevScroll, setHideNavbar);
 		if((page == chapterData.number_of_pages) || displayAsList){
 			setPage(1);
 			setChapterNumber(Math.min(chapterData.number + 1, mangaData.number_of_chapters));
@@ -136,25 +141,23 @@ export default function MangaReader(props){
 	}, [page, chapterData, mangaData, displayAsList]);
 
 	const slidePrevious = useCallback(()=> {
-		hideNavbarForcibly(prevScroll, setHideNavbar);
 		if((page == 1) || displayAsList){
 			setPage(1);
 			setChapterNumber(Math.max(chapterData.number - 1, 1));
 		} else setPage(page - 1);
 	}, [page, chapterData, mangaData, displayAsList]);
 
-	const changeDisplayMode = useCallback(()=> setDisplayMode(!displayAsList), [displayAsList]);
+	const changeDisplayMode = useCallback(()=> setDisplayMode(prevMode=> !prevMode), []);
 
-	const errorWasRised = error || props.Error;
-	const dataStillLoading = loading || props.Loading;
+	const totalPageObserve = useCallback(getTotalPage(page, chapterData.number_of_pages, setPage), [chapterData]);
 
 	useEffect(()=> {
 		const setNavbarState = getNavbarState(prevScroll, setHideNavbar);
 		window.addEventListener('scroll', setNavbarState);
 
 		const qs = new URLSearchParams(location.search);
-		setChapterNumber(+qs.get('chapter') || 1);
-		setPage(+qs.get('page') || 1);
+		setChapterNumber(getNumericParam('chapter'));
+		setPage(getNumericParam('page'));
 		return ()=> window.removeEventListener('scroll', setNavbarState);
 	}, []);
 
@@ -164,12 +167,17 @@ export default function MangaReader(props){
 	}, [chapterNumber, mangaData]);
 
 	useEffect(()=> {
-		if(chapterNumber) scrollToTotalPage(page);
-		return ()=> hideNavbarForcibly(prevScroll, setHideNavbar);
+		if(!chapterNumber) return;
+		scrollToTotalPage(page);
+		const iBegUToHideIt = ()=> hideNavbarForcibly(prevScroll, setHideNavbar);
+		setTimeout(iBegUToHideIt); //AAAAAAAAAAAAA
 	}, [displayAsList]);
 
 	useEffect(()=> {
-		if(!displayAsList) scrollToTotalPage(page);
+		if(!displayAsList){
+			scrollToTotalPage(page);
+			hideNavbarForcibly(prevScroll, setHideNavbar);
+		};
 		if(chapterNumber !== null){
 			const qs = new URLSearchParams({
 				chapter: chapterNumber,
@@ -183,10 +191,13 @@ export default function MangaReader(props){
 	}, [chapterData, page]);
 
 	useEffect(()=> {
-		const onScroll = getTotalPage(page, chapterData.number_of_pages, setPage);
+		const onScroll = totalPageObserve;
 		if(displayAsList) window.addEventListener('scroll', onScroll);
 		return ()=> window.removeEventListener('scroll', onScroll);
 	}, [chapterData, displayAsList]);
+
+	const errorWasRised = error || props.Error;
+	const dataStillLoading = loading || props.Loading;
 
 	return(
 		<>

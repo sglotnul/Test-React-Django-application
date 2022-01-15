@@ -4,7 +4,6 @@ from django.db import models
 from django.db.models import Q
 from django.conf import settings
 from django.core.exceptions import PermissionDenied, FieldError
-from user_app.models import CustomUser
 
 def images_directory_path(instance, filename):
 	return os.path.join("previews", str(instance.slug), str(uuid.uuid4().hex + ".jpg"))
@@ -15,26 +14,7 @@ class DefaultQuerySet(models.QuerySet):
 			raise PermissionDenied('you can\'t delete more then 5 objects')
 		for obj in self:
 			obj.delete()
-		super(DefaultQuerySet, self).delete(*args, **kwargs)
-	def safe_order_by(self, *args, **kwargs):
-		qs = super(DefaultQuerySet, self)
-		try:
-			qs = qs.order_by(*args, **kwargs)
-		except FieldError:
-			qs = qs.order_by('title')
-		return qs
-	def include_or_exclude_filter(self, field, filters_list):
-		qs = super(DefaultQuerySet, self)
-		for f in filters_list:
-			if f.startswith('-'):
-				qs = qs.exclude(**{field: f[1:]})
-			else:
-				qs = qs.filter(**{field: f})
-		return qs
-
-class DefaultManager(models.Manager):
-	def get_queryset(self):
-		return DefaultQuerySet(self.model, using = self._db)
+		super().delete(*args, **kwargs)
 	def safe_get(self, **kwargs):
 		result = None
 		try:
@@ -42,15 +22,34 @@ class DefaultManager(models.Manager):
 		except:
 			pass
 		return result;
-	def search(self, *strings, fields=None):
-		fields_to_search = fields
-		if fields_to_search is None:
-			fields_to_search = ['title__contains',]
+	def safe_order_by(self, *args, **kwargs):
+		qs = self
+		try:
+			qs = self.order_by(*args, **kwargs)
+		except FieldError:
+			qs = self.order_by('title')
+		return qs
+	def include_or_exclude_filter(self, field, filters_list):
+		qs = self
+		for f in filters_list:
+			if f.startswith('-'):
+				qs = qs.exclude(**{field: f[1:]})
+			else:
+				qs = qs.filter(**{field: f})
+		return qs
+	def search(self, *strings, by_fields=[]):
 		filter_arg = Q()
 		for string in strings:
-			filter_arg = filter_arg | reduce(lambda prev_f, f: prev_f | Q(**{f: string}), fields_to_search, Q())
-		qs = self.get_queryset().filter(filter_arg)
+			filter_arg = filter_arg | reduce(lambda prev_f, f: prev_f | Q(**{f: string}), by_fields, Q())
+		qs = self.filter(filter_arg)
 		return qs
+
+class DefaultManager(models.Manager):
+	def get_queryset(self):
+		return DefaultQuerySet(self.model, using = self._db)
+
+	def safe_get(self, **kwargs):
+		return self.get_queryset().safe_get(**kwargs)
 
 class Category(models.Model):
 	title = models.CharField(max_length = 200)
@@ -144,18 +143,3 @@ class IntegerRangedField(models.IntegerField):
 		defaults = {'min_value': self.min_value, 'max_value': self.max_value}
 		defaults.update(kwargs)
 		return super(IntegerRangedField, self).formfield(**defaults)
-
-class Comment(models.Model):
-	author = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-	chapter = models.ForeignKey(MangaChapter, on_delete=models.CASCADE)
-	created_at = models.DateTimeField(auto_now_add=True, verbose_name='Создано')
-	redacted_at = models.DateTimeField(auto_now=True, verbose_name='Изменено')
-	text= models.TextField(blank=True, verbose_name='Содержание')
-	grade = IntegerRangedField(min_value=1, max_value=10, verbose_name='Оценка')
-
-	def __str__(self):
-		return str(self.pk)
-
-	class Meta:
-		verbose_name = 'Коментарий'
-		verbose_name_plural = 'Коментарии'
